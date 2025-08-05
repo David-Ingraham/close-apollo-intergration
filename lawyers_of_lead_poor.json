@@ -1,0 +1,127 @@
+{
+  "timestamp": "unknown",
+  "total_leads": 10,
+  "leads_needing_enrichment": 10,
+  "leads": [
+    {
+      "lead_id": "lead_0fAERVanGSnn6FhavKnArVl0oCmQw1W2gF5aNAeflvr",
+      "client_name": "Dan Murphy",
+      "client_email": "danmurphy4424@yahoo.com",
+      "attorney_firm": "kaner & pentaluga",
+      "attorney_email": "amlopez@kpattorney.com",
+      "firm_domain": "kpattorney.com",
+      "search_strategy": "firm_name",
+      "needs_apollo_enrichment": true,
+      "skip_reason": null,
+      "total_contacts": 2
+    },
+    {
+      "lead_id": "lead_mLLn2fh9kzR7YEZRm8f5s1aATa9FGG1EsYjcOTL0UuE",
+      "client_name": "Jeramie Lyons",
+      "client_email": "jeramielyons@gmail.com",
+      "attorney_firm": "Angels Reyes",
+      "attorney_email": "jeramielyons@gmail.com",
+      "firm_domain": "gmail.com",
+      "search_strategy": "firm_name",
+      "needs_apollo_enrichment": true,
+      "skip_reason": null,
+      "total_contacts": 1
+    },
+    {
+      "lead_id": "lead_35NGREyJ8O4DJ8qDc0wmJS9CpLzyVawRQWe2ezxTToY",
+      "client_name": "Tabitha McClarity",
+      "client_email": "tab7515@yahoo.com",
+      "attorney_firm": "Johnny Phillips",
+      "attorney_email": "Jphillips@johnnyphillipslaw.com",
+      "firm_domain": "johnnyphillipslaw.com",
+      "search_strategy": "firm_name",
+      "needs_apollo_enrichment": true,
+      "skip_reason": null,
+      "total_contacts": 1
+    },
+    {
+      "lead_id": "lead_cQ4TUpTI5V1Mn3QUDw8JW2ksnh5QP8zpm5KrQixTx9p",
+      "client_name": "Jeffrey Kruscinski",
+      "client_email": "jkruscinski17@yahoo.com",
+      "attorney_firm": "Postman law",
+      "attorney_email": "jkruscinski17@yahoo.com",
+      "firm_domain": "yahoo.com",
+      "search_strategy": "firm_name",
+      "needs_apollo_enrichment": true,
+      "skip_reason": null,
+      "total_contacts": 1
+    },
+    {
+      "lead_id": "lead_IAbyem7MrUIiZGccwZDnFzOrlAS3Cvo304bZTJJKocz",
+      "client_name": "Olasunkanmi Dada",
+      "client_email": "ola.dadaking1@gmail.com",
+      "attorney_firm": "Abramson Labor Group",
+      "attorney_email": "ola.dadaking1@gmail.com",
+      "firm_domain": "gmail.com",
+      "search_strategy": "firm_name",
+      "needs_apollo_enrichment": true,
+      "skip_reason": null,
+      "total_contacts": 1
+    },
+    {
+      "lead_id": "lead_No6c1O8l2Jk2W7ZuSz47OPQCPh6SIopeclTZKsYDLp6",
+      "client_name": "Boyd Beer",
+      "client_email": "bbeer28@gmail.com",
+      "attorney_firm": "Benson and bingham",
+      "attorney_email": "bbeer28@gmail.com",
+      "firm_domain": "gmail.com",
+      "search_strategy": "firm_name",
+      "needs_apollo_enrichment": true,
+      "skip_reason": null,
+      "total_contacts": 1
+    },
+    {
+      "lead_id": "lead_3zTJP86MYuu7haHdmSIpOD16MKgaBAF2GqCKLZztlsb",
+      "client_name": "Dave Vanpelt",
+      "client_email": "dvpbin61@gmail.com",
+      "attorney_firm": "Downtown LA Law",
+      "attorney_email": "Dvpbud1961@yahoo.com",
+      "firm_domain": "yahoo.com",
+      "search_strategy": "firm_name",
+      "needs_apollo_enrichment": true,
+      "skip_reason": null,
+      "total_contacts": 1
+    },
+    {
+      "lead_id": "lead_HJZQBoQI8xQQnLUmbXoGH5sIjun3EtUbKrlAq87aBME",
+      "client_name": "Janice Williams",
+      "client_email": "jnb8684@gmail.com",
+      "attorney_firm": "The Law Offices of  Rotstein & Shiffman, LLP",
+      "attorney_email": "WCAssistant1@rotstein-shiffman.com",
+      "firm_domain": "rotstein-shiffman.com",
+      "search_strategy": "firm_name",
+      "needs_apollo_enrichment": true,
+      "skip_reason": null,
+      "total_contacts": 1
+    },
+    {
+      "lead_id": "lead_KwBNBaE2ExoZSJBctjfTu1rqKPPHOkq2toTaD0cVQon",
+      "client_name": "David Hilerio",
+      "client_email": "hileriodavid12@gmail.com",
+      "attorney_firm": "Josh turim",
+      "attorney_email": "Jturim@workinjuryfirm.com",
+      "firm_domain": "workinjuryfirm.com",
+      "search_strategy": "firm_name",
+      "needs_apollo_enrichment": true,
+      "skip_reason": null,
+      "total_contacts": 1
+    },
+    {
+      "lead_id": "lead_5Z6aUKI3BZUVH4wYt3RjF1UjvIl267Vj6np8SHAYWMy",
+      "client_name": "Richard Henderson",
+      "client_email": "deadopp365@gmail.com",
+      "attorney_firm": "farzam Law Firm",
+      "attorney_email": "juliens@farzamlaw.com",
+      "firm_domain": "farzamlaw.com",
+      "search_strategy": "firm_name",
+      "needs_apollo_enrichment": true,
+      "skip_reason": null,
+      "total_contacts": 1
+    }
+  ]
+}
