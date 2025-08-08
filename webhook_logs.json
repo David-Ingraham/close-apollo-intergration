@@ -1,0 +1,155 @@
+{
+  "timestamp": "2025-08-08T14:50:40.561865",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "data": {
+    "person": {
+      "id": "test_123",
+      "email": "[email protected]",
+      "phone_numbers": [
+        {
+          "raw_number": "+1234567890",
+          "sanitized_phone": "+11234567890",
+          "type": "mobile"
+        },
+        {
+          "raw_number": "+1987654321",
+          "sanitized_phone": "+11987654321",
+          "type": "work"
+        }
+      ],
+      "first_name": "Test",
+      "last_name": "Person"
+    }
+  }
+}
+==================================================
+{
+  "timestamp": "2025-08-08T14:51:20.614754",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "data": {
+    "person": {
+      "id": "test_123",
+      "email": "[email protected]",
+      "phone_numbers": [
+        {
+          "raw_number": "+1234567890",
+          "sanitized_phone": "+11234567890",
+          "type": "mobile"
+        },
+        {
+          "raw_number": "+1987654321",
+          "sanitized_phone": "+11987654321",
+          "type": "work"
+        }
+      ],
+      "first_name": "Test",
+      "last_name": "Person"
+    }
+  }
+}
+==================================================
+{
+  "timestamp": "2025-08-08T15:00:57.692109",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "data": {
+    "person": {
+      "id": "test_123",
+      "email": "[email protected]",
+      "phone_numbers": [
+        {
+          "raw_number": "+1234567890",
+          "sanitized_phone": "+11234567890",
+          "type": "mobile"
+        },
+        {
+          "raw_number": "+1987654321",
+          "sanitized_phone": "+11987654321",
+          "type": "work"
+        }
+      ],
+      "first_name": "Test",
+      "last_name": "Person"
+    }
+  }
+}
+==================================================
+{
+  "timestamp": "2025-08-08T15:05:42.037327",
+  "headers": {
+    "Host": "989102ba1226.ngrok-free.app",
+    "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+    "Content-Length": "1135",
+    "Accept": "*/*",
+    "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+    "Accept-Encoding": "gzip,deflate,identity",
+    "Accept-Language": "en-us,en;q=0.5",
+    "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+    "Content-Type": "application/json",
+    "Sentry-Trace": "2924f111fd4c4e608067308bb6d8cd9a-9c7c89b11ac647fe",
+    "Traceparent": "00-1ec4173b2cb93fb4f4c11558bcdebb9b-a373b82a2206e5fc-01",
+    "X-Forwarded-For": "34.136.123.151",
+    "X-Forwarded-Host": "989102ba1226.ngrok-free.app",
+    "X-Forwarded-Proto": "https"
+  },
+  "data": {
+    "status": "success",
+    "total_requested_enrichments": 1,
+    "unique_enriched_records": 1,
+    "missing_records": 0,
+    "credits_consumed": 5,
+    "people": [
+      {
+        "id": "5b340ef4a6da98b2a01d55ce",
+        "status": "success",
+        "phone_numbers": [
+          {
+            "_id": "6896496b1a3f7a0001a81d6d",
+            "confidence_cd": "high",
+            "dnc_other_info": null,
+            "dnc_status_cd": null,
+            "dnc_status_updated_at": null,
+            "raw_number": "+1 912-202-9815",
+            "sanitized_number": "+19122029815",
+            "status_cd": "valid_number",
+            "type_cd": "other",
+            "id": "6896496b1a3f7a0001a81d6d",
+            "key": "6896496b1a3f7a0001a81d6d"
+          },
+          {
+            "_id": "6896496b1a3f7a0001a81d6e",
+            "confidence_cd": "high",
+            "dnc_other_info": null,
+            "dnc_status_cd": null,
+            "dnc_status_updated_at": null,
+            "raw_number": "+1 404-948-3334",
+            "sanitized_number": "+14049483334",
+            "status_cd": "valid_number",
+            "type_cd": "other",
+            "id": "6896496b1a3f7a0001a81d6e",
+            "key": "6896496b1a3f7a0001a81d6e"
+          },
+          {
+            "_id": "6896496b1a3f7a0001a81d6f",
+            "confidence_cd": "high",
+            "dnc_other_info": null,
+            "dnc_status_cd": null,
+            "dnc_status_updated_at": null,
+            "raw_number": "+1 404-487-0184 ext 2313",
+            "sanitized_number": "+14044870184ext2313",
+            "status_cd": "valid_number",
+            "type_cd": "mobile",
+            "id": "6896496b1a3f7a0001a81d6f",
+            "key": "6896496b1a3f7a0001a81d6f"
+          }
+        ]
+      }
+    ]
+  }
+}
+==================================================

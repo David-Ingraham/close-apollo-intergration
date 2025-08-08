@@ -3,249 +3,265 @@ import json
 import re
 import time
 import requests
+import difflib
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
+# Correct endpoint (no /api)
+APOLLO_SEARCH_URL = "https://api.apollo.io/v1/mixed_companies/search"
+
+PUBLIC_DOMAINS = {
+    "gmail.com","yahoo.com","outlook.com","hotmail.com","aol.com","icloud.com",
+    "protonmail.com","yandex.com","msn.com","live.com","me.com"
+}
+def is_public_domain(d):
+    return bool(d) and d.lower() in PUBLIC_DOMAINS
+
 def clean_firm_name(name):
-    """
-    Remove common legal terms and clean up the firm name for better search results.
-    """
     if not name or name == 'N/A':
         return name
-    
-    # Common legal terms to remove
     legal_terms = [
         'the law offices of', 'law offices of', 'law office of', 'law firm of',
-        'law firm', 'attorneys at law', 'llp', 'llc', 'pc', 'pllc', 
-        'ltd', 'inc', 'corporation', 'corp'
+        'law firm', 'attorneys at law', 'llp', 'llc', 'pc', 'pllc',
+        'ltd', 'inc', 'corporation', 'corp', 'group', 'associates'
     ]
-    
     cleaned = name.lower()
     for term in legal_terms:
         cleaned = cleaned.replace(term, '')
-    
-    # Clean up punctuation and extra spaces
-    cleaned = re.sub(r'[,&]+', ' ', cleaned)  # Replace commas and ampersands with spaces
-    cleaned = re.sub(r'\s+', ' ', cleaned).strip()  # Remove extra whitespace
-    
+    cleaned = re.sub(r'[,&]+', ' ', cleaned)
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
     return cleaned
 
 def extract_domain_root(domain):
-    """
-    Extract the root part of a domain (e.g., 'kpattorney' from 'kpattorney.com')
-    """
     if not domain or domain == 'N/A':
         return None
-    
-    # Remove common TLDs
-    domain_parts = domain.split('.')
-    if len(domain_parts) > 1:
-        return domain_parts[0]
-    return domain
+    parts = domain.lower().strip().split('.')
+    if len(parts) > 2 and parts[-2] in {"co"}:
+        return parts[-3]
+    return parts[0] if len(parts) > 1 else domain
 
 def get_search_variations(firm_name):
-    """
-    Generate different variations of the firm name to try as search terms.
-    """
     if not firm_name or firm_name == 'N/A':
         return []
-    
     variations = []
-    
-    # Original name
-    variations.append(firm_name)
-    
-    # Cleaned name (remove legal boilerplate)
+
+    # Original and quoted exact
+    variations += [firm_name, f'"{firm_name}"']
+
+    # Cleaned
     cleaned = clean_firm_name(firm_name)
     if cleaned and cleaned != firm_name.lower():
-        variations.append(cleaned)
-    
-    # Core firm name variations (handle & vs and)
-    # Extract the main firm name part
-    core_name = firm_name
-    
-    # Remove "The Law Offices of" type prefixes
-    prefixes_to_remove = [
-        r'^the\s+law\s+offices?\s+of\s+',
-        r'^law\s+offices?\s+of\s+',
-        r'^the\s+law\s+firm\s+of\s+'
-    ]
-    
-    for prefix in prefixes_to_remove:
-        core_name = re.sub(prefix, '', core_name, flags=re.IGNORECASE)
-    
-    # Remove suffixes like LLP, LLC, PC
-    suffixes_to_remove = [
-        r',?\s*(llp|llc|pc|pllc|ltd|inc|corp|corporation)\.?$'
-    ]
-    
-    for suffix in suffixes_to_remove:
-        core_name = re.sub(suffix, '', core_name, flags=re.IGNORECASE)
-    
-    core_name = core_name.strip()
-    
-    if core_name and core_name != firm_name:
-        variations.append(core_name)
-    
-    # Handle & vs and variations
-    if '&' in core_name:
-        variations.append(core_name.replace('&', 'and'))
-        variations.append(core_name.replace('&', ''))
-    elif ' and ' in core_name.lower():
-        variations.append(core_name.replace(' and ', ' & '))
-        variations.append(re.sub(r'\s+and\s+', ' ', core_name, flags=re.IGNORECASE))
-    
-    # Individual attorney names (for cases like "Rotstein & Shiffman" -> ["Rotstein", "Shiffman"])
-    # Only extract names that look like surnames (capitalized, 4+ letters)
-    attorney_names = re.findall(r'\b[A-Z][a-z]{3,}\b', core_name)
-    # Filter out common legal words
-    legal_words = {'Law', 'Firm', 'Office', 'Offices', 'Group', 'Attorney', 'Attorneys', 'Associates', 'Legal'}
-    attorney_names = [name for name in attorney_names if name not in legal_words]
-    
-    for name in attorney_names:
-        variations.append(name)
-    
-    # Remove duplicates while preserving order
-    seen = set()
-    unique_variations = []
-    for variation in variations:
-        variation_clean = variation.strip()
-        if variation_clean and variation_clean.lower() not in seen:
-            seen.add(variation_clean.lower())
-            unique_variations.append(variation_clean)
-    
-    return unique_variations
+        variations += [cleaned, f'"{cleaned}"']
 
-def is_law_firm(org_name):
-    """
-    Check if an organization name indicates it's a law firm.
-    """
-    if not org_name:
+    # Remove prefixes/suffixes
+    core = firm_name
+    for prefix in [r'^the\s+law\s+offices?\s+of\s+', r'^law\s+offices?\s+of\s+', r'^the\s+law\s+firm\s+of\s+']:
+        core = re.sub(prefix, '', core, flags=re.IGNORECASE)
+    core = re.sub(r',?\s*(llp|llc|pc|pllc|ltd|inc|corp|corporation)\.?$', '', core, flags=re.IGNORECASE).strip()
+    if core and core != firm_name:
+        variations += [core, f'"{core}"']
+
+    # & vs and
+    if '&' in core:
+        variations += [core.replace('&', 'and'), core.replace('&', '')]
+    elif ' and ' in core.lower():
+        variations += [re.sub(r'\s+and\s+', ' & ', core, flags=re.IGNORECASE),
+                       re.sub(r'\s+and\s+', ' ', core, flags=re.IGNORECASE)]
+
+    # Helpful normalizations (e.g., "Downtown LA Law")
+    variations.append(re.sub(r'\bLA\b', 'Los Angeles', core, flags=re.IGNORECASE))
+    variations.append(re.sub(r'\s+Group$', '', core, flags=re.IGNORECASE))
+    # DTLA nickname
+    if re.search(r'\bdowntown\s+la\b', core, flags=re.IGNORECASE):
+        variations.append('DTLA Law Group')
+
+    # Extract surnames to try as fallbacks (Rotstein, Shiffman)
+    names = re.findall(r'\b[A-Z][a-z]{3,}\b', core)
+    legal_words = {'Law','Firm','Office','Offices','Group','Attorney','Attorneys','Associates','Legal'}
+    # Don't add single generic words as variations
+    generic_words = {'downtown', 'law', 'group', 'office', 'firm', 'attorneys', 'legal'}
+    for n in names:
+        if n not in legal_words and n.lower() not in generic_words:
+            variations.append(n)
+
+    # Dedup preserving order
+    seen, uniq = set(), []
+    for v in variations:
+        k = v.strip().lower()
+        if k and k not in seen:
+            seen.add(k)
+            uniq.append(v.strip())
+    return uniq
+
+def is_law_firm(name):
+    if not name:
         return False
-    
-    name_lower = org_name.lower()
-    law_firm_indicators = [
-        'law', 'attorney', 'attorneys', 'legal', 'counsel', 
-        'llp', 'law firm', 'law office', 'law offices',
-        'associates', 'partners', 'esquire', 'esq'
-    ]
-    
-    return any(indicator in name_lower for indicator in law_firm_indicators)
+    n = name.lower()
+    indicators = ['law', 'attorney', 'attorneys', 'legal', 'counsel', 'llp', 'law firm', 'law office', 'law offices', 'associates', 'partners']
+    return any(t in n for t in indicators)
 
-def enrich_organization_industry(org_id, org_domain=None):
-    """
-    Get detailed organization information including industry data.
-    Try multiple parameter formats since API requirements are unclear.
-    """
-    api_key = os.getenv('APOLLO_API_KEY')
-    if not api_key:
-        raise ValueError("APOLLO_API_KEY not found in environment variables")
-
-    url = f"https://api.apollo.io/api/v1/organizations/enrich"
-    headers = {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache',
-        'X-Api-Key': api_key
-    }
-
-    # Try different parameter combinations
-    attempts = [
-        {"id": org_id},
-        {"domain": org_domain} if org_domain else None,
-        {"organization_id": org_id}
-    ]
-    
-    attempts = [attempt for attempt in attempts if attempt is not None]
-
-    for i, params in enumerate(attempts, 1):
-        try:
-            response = requests.get(url, headers=headers, params=params)
-            if response.status_code == 200:
-                return response.json()
-            elif response.status_code == 422:
-                print(f"    Enrichment attempt {i} failed (422) with params: {params}")
-                continue
-            else:
-                response.raise_for_status()
-        except requests.exceptions.RequestException as e:
-            print(f"    Enrichment attempt {i} error: {e}")
-            continue
-    
-    print(f"    All enrichment attempts failed for org ID '{org_id}'")
-    return None
-
-def enrich_individual_person(person_name, company_name, linkedin_url=None, title=None, domain=None):
-    """
-    Use People Enrichment API to unlock email/phone for a specific person.
-    Uses multiple matching criteria to ensure we get the RIGHT person.
-    This API DOES spend credits to unlock contact information.
-    """
-    api_key = os.getenv('APOLLO_API_KEY')
-    if not api_key:
-        raise ValueError("APOLLO_API_KEY not found in environment variables")
-
-    url = "https://api.apollo.io/api/v1/people/match"
-    headers = {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache',
-        'X-Api-Key': api_key
-    }
-
-    # Build enrichment payload with multiple matching criteria for accuracy
-    payload = {
-        "reveal_personal_emails": True,
-        # Note: reveal_phone_number requires webhook_url, so we'll skip it for now
-        "first_name": person_name.split()[0] if person_name else "",
-        "last_name": " ".join(person_name.split()[1:]) if len(person_name.split()) > 1 else "",
-        "organization_name": company_name
-    }
-    
-    # Add LinkedIn URL - this is the most unique identifier
-    if linkedin_url:
-        payload["linkedin_url"] = linkedin_url
-    
-    # Add title for additional matching validation
-    if title:
-        payload["title"] = title
-        
-    # Add domain for company validation
-    if domain:
-        payload["domain"] = domain
-
+def _post(headers, payload):
     try:
-        response = requests.post(url, headers=headers, json=payload)
-        response.raise_for_status()
-        result = response.json()
-        
-        # Validate that we got the right person by checking company match
-        if result and result.get('person'):
-            enriched_person = result['person']
-            enriched_company = enriched_person.get('organization', {}).get('name', '').lower()
-            target_company = company_name.lower()
-            
-            # Check if companies match (allow partial matches)
-            company_matches = (
-                target_company in enriched_company or 
-                enriched_company in target_company or
-                # Check for common law firm variations
-                any(word in enriched_company for word in target_company.split() if len(word) > 3)
-            )
-            
-            if not company_matches:
-                print(f"          WARNING: Company mismatch - Expected: '{company_name}', Got: '{enriched_person.get('organization', {}).get('name', 'Unknown')}'")
-                print(f"          This might be the wrong {person_name}")
-            
-        return result
-    except requests.exceptions.RequestException as e:
-        print(f"    ERROR: Person enrichment failed for '{person_name}': {e}")
+        resp = requests.post(APOLLO_SEARCH_URL, headers=headers, json=payload)
+        resp.raise_for_status()
+        return resp.json()
+    except requests.RequestException as e:
+        print(f"      WARN: search request error: {e}")
         return None
 
+def search_apollo_organization(query, page=1, per_page=100, domains=None):
+    api_key = os.getenv('APOLLO_API_KEY')
+    if not api_key:
+        raise ValueError("APOLLO_API_KEY not found in environment variables")
+    headers = {'Content-Type': 'application/json', 'Cache-Control': 'no-cache', 'X-Api-Key': api_key}
+
+    # Name search (primary)
+    data = _post(headers, {"q_organization_name": query, "page": page, "per_page": per_page})
+    if data and data.get("organizations"):
+        return data
+
+    # Domain search (exact) if provided
+    if domains:
+        for key in ("company_domains", "domains", "q_company_domains"):
+            data = _post(headers, {key: domains, "page": 1, "per_page": 100})
+            if data and data.get("organizations"):
+                return data
+    return None
+
+def _primary_domain(org):
+    d = org.get("primary_domain")
+    if d:
+        return d.lower()
+    website = org.get("website_url") or ""
+    website = website.replace("http://", "").replace("https://", "").split("/")[0].lower()
+    return website or None
+
+def rank_and_dedupe_organizations(orgs, input_query, input_domain=None, top_k=5):
+    deduped = {}
+    for o in orgs:
+        key = o.get("id") or _primary_domain(o) or o.get("name")
+        if key and key not in deduped:
+            deduped[key] = o
+    orgs = list(deduped.values())
+
+    def score(o):
+        name = o.get("name") or ""
+        domain = _primary_domain(o)
+        s = 0.0
+        s += difflib.SequenceMatcher(None, name.lower(), input_query.lower()).ratio() * 60
+        if input_query.lower() in name.lower():
+            s += 10
+        if is_law_firm(name):
+            s += 10
+        if input_domain and domain and input_domain.lower() in domain:
+            s += 15
+        if o.get("linkedin_url"):
+            s += 2
+        if o.get("phone") or o.get("primary_phone"):
+            s += 1
+        return s
+
+    scored = sorted(orgs, key=lambda o: score(o), reverse=True)[:top_k]
+    results = []
+    for o in scored:
+        results.append({
+            "id": o.get("id"),
+            "name": o.get("name"),
+            "primary_domain": _primary_domain(o),
+            "website_url": o.get("website_url"),
+            "linkedin_url": o.get("linkedin_url"),
+            "phone": o.get("phone") or (o.get("primary_phone") or {}).get("number"),
+            "_score": round(difflib.SequenceMatcher(None, (o.get('name') or '').lower(), input_query.lower()).ratio(), 3)
+        })
+    return results
+
+def normalize_core(name: str):
+    if not name:
+        return ""
+    n = name.lower()
+    n = re.sub(r'(the\s+)?law\s+offices?\s+of\s+', '', n)
+    n = re.sub(r',?\s*(llp|llc|pc|pllc|ltd|inc|corp|corporation|group)\.?$', '', n)
+    n = n.replace('&', ' and ')
+    n = re.sub(r'\bla\b', 'los angeles', n)
+    n = re.sub(r'\s+', ' ', n).strip()
+    return n
+
+def acronym(s: str):
+    toks = re.findall(r'[a-zA-Z]+', s or "")
+    return ''.join(t[0] for t in toks if t)
+
+LEGAL_HINTS = {'law','lawyer','lawyers','attorney','attorneys','legal','counsel','llp','law office','law offices'}
+
+def name_has_legal_hint(name: str):
+    n = (name or "").lower()
+    return any(h in n for h in LEGAL_HINTS)
+
+def choose_best_org(lead_firm_name, firm_domain, candidates):
+    if not candidates:
+        return None, "no_candidates"
+    
+    core = normalize_core(lead_firm_name or "")
+    core_tokens = set(core.split())
+    acro = acronym(core)
+
+    # 1) Exact domain match (non-public)
+    if firm_domain and not is_public_domain(firm_domain):
+        exact = [c for c in candidates if (c.get("primary_domain") or "").lower() == firm_domain.lower()]
+        if exact:
+            exact.sort(key=lambda c: difflib.SequenceMatcher(None, (c.get("name") or "").lower(), core).ratio(), reverse=True)
+            return exact[0], "exact_domain"
+
+    # 2) Score by name similarity + token coverage + hints + domain root
+    dom_root = extract_domain_root(firm_domain) if firm_domain and not is_public_domain(firm_domain) else None
+
+    def score(c):
+        name = (c.get("name") or "").lower()
+        tokens_in = len(core_tokens & set(name.split()))
+        core_cov = tokens_in / max(1, len(core_tokens))
+        sim = difflib.SequenceMatcher(None, name, core).ratio()
+        bonus = 0.0
+        if name_has_legal_hint(name): bonus += 0.08
+        if acro and acro in name.replace(' ', ''): bonus += 0.06
+        if dom_root and c.get("primary_domain") and dom_root in c["primary_domain"].lower(): bonus += 0.06
+        if c.get("linkedin_url"): bonus += 0.02
+        return sim*0.7 + core_cov*0.25 + bonus
+
+    ranked = sorted(candidates, key=score, reverse=True)
+    
+    # Show all candidates found
+    print(f"    Found {len(candidates)} organizations, showing top candidates:")
+    for i, c in enumerate(ranked[:3], 1):
+        s = score(c)
+        domain = c.get("primary_domain") or "no-domain"
+        name = c.get("name") or "Unknown"
+        # Encode name safely for Windows console
+        try:
+            safe_name = name.encode('ascii', 'ignore').decode('ascii')
+        except:
+            safe_name = "Name with special chars"
+        print(f"      {i}. {safe_name} (score: {s:.3f}, domain: {domain})")
+
+    top, runner = ranked[0], ranked[1] if len(ranked) > 1 else None
+    top_s = score(top)
+    runner_s = score(runner) if runner else 0.0
+
+    # Must be a law firm AND have decent similarity
+    if not name_has_legal_hint(top.get("name", "")):
+        return None, f"not_law_firm:{top_s:.3f}"
+    
+    # Stricter thresholds for law firms
+    if top_s >= 0.45 and (top_s - runner_s) >= 0.05:
+        return top, f"score_ok:{top_s:.3f}"
+    
+    # For individual attorney searches (like "Josh" from "Josh turim"), be more strict
+    if len(core_tokens) == 1 and top_s < 0.60:
+        return None, f"single_name_too_low:{top_s:.3f}"
+        
+    return None, f"ambiguous:{top_s:.3f}/{runner_s:.3f}"
+
 def search_people_at_organization(org_id, org_name):
-    """
-    Search for people (attorneys/partners) at a specific organization.
-    """
+    """Search for attorneys/partners at a specific organization"""
     api_key = os.getenv('APOLLO_API_KEY')
     if not api_key:
         raise ValueError("APOLLO_API_KEY not found in environment variables")
@@ -257,17 +273,12 @@ def search_people_at_organization(org_id, org_name):
         'X-Api-Key': api_key
     }
 
-    # Search for attorneys, partners, lawyers at this organization
-    # Try different parameter combinations for unlocking emails
     payload = {
         "organization_ids": [org_id],
-        "person_titles": ["attorney", "partner", "lawyer", "counsel", "legal", "paralegal"],
+        "person_titles": ["attorney", "partner", "lawyer", "counsel", "paralegal"],
+        "email_statuses": ["verified"],
         "page": 1,
-        "per_page": 100,  # Get up to 100 contacts
-        "reveal_personal_emails": True,  # Get personal emails
-        "reveal_phone_number": True,    # Get phone numbers  
-        "show_phone_info": True,        # Alternative phone parameter
-        "show_emails": True             # Alternative email parameter
+        "per_page": 25
     }
 
     try:
@@ -275,74 +286,27 @@ def search_people_at_organization(org_id, org_name):
         response.raise_for_status()
         result = response.json()
         
-        # Found people - will enrich individually to unlock emails/phones
+        people = result.get("people", [])
+        print(f"      Found {len(people)} legal professionals")
         
-        return result
+        contacts = []
+        for person in people:
+            contact = {
+                'name': f"{person.get('first_name', '')} {person.get('last_name', '')}".strip(),
+                'title': person.get('title'),
+                'email': person.get('email'),
+                'linkedin_url': person.get('linkedin_url'),
+                'phone': None
+            }
+            contacts.append(contact)
+            
+        return contacts
+        
     except requests.exceptions.RequestException as e:
-        print(f"    ERROR: People search failed for org '{org_name}' (ID: {org_id}): {e}")
-        return None
-
-def is_legal_industry(org_data):
-    """
-    Check if organization is in legal industry based on enriched data.
-    """
-    if not org_data or 'organization' not in org_data:
-        return False
-    
-    org = org_data['organization']
-    
-    # Check primary industry
-    if 'primary_industry' in org:
-        industry = str(org['primary_industry']).lower()
-        if any(term in industry for term in ['legal', 'law', 'attorney']):
-            return True
-    
-    # Check industry tags
-    if 'industry_tag_list' in org:
-        for tag in org['industry_tag_list']:
-            if any(term in str(tag).lower() for term in ['legal', 'law', 'attorney']):
-                return True
-    
-    # Check keywords/description
-    for field in ['keywords', 'short_description', 'description']:
-        if field in org and org[field]:
-            text = str(org[field]).lower()
-            if any(term in text for term in ['legal services', 'law firm', 'attorney', 'legal counsel']):
-                return True
-    
-    return False
-
-def search_apollo_organization(query):
-    """
-    Search for an organization in Apollo by name.
-    Returns the full API response or None if failed.
-    """
-    api_key = os.getenv('APOLLO_API_KEY')
-    if not api_key:
-        raise ValueError("APOLLO_API_KEY not found in environment variables")
-
-    url = "https://api.apollo.io/v1/mixed_companies/search"
-    headers = {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache',
-        'X-Api-Key': api_key
-    }
-
-    payload = {"q_organization_name": query}
-
-    try:
-        response = requests.post(url, headers=headers, json=payload)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        print(f"    ERROR: API call failed for '{query}': {e}")
-        return None
+        print(f"      ERROR: People search failed for '{org_name}': {e}")
+        return []
 
 def search_firm_with_retry(lead_data):
-    """
-    Attempt to find a law firm using multiple search strategies.
-    Returns a dictionary with search results.
-    """
     result = {
         'lead_id': lead_data.get('lead_id'),
         'client_name': lead_data.get('client_name'),
@@ -353,116 +317,155 @@ def search_firm_with_retry(lead_data):
         'organizations_found': [],
         'attempts': []
     }
-    
+
     firm_name = lead_data.get('attorney_firm')
-    firm_domain = lead_data.get('firm_domain')
-    
-    print(f"\nSearching for: {firm_name}")
-    
-    # Strategy 1: Try name variations
+    firm_domain = (lead_data.get('firm_domain') or '').lower()
+
+    # Name variations first
     if firm_name and firm_name != 'N/A':
         variations = get_search_variations(firm_name)
-        
         for i, variation in enumerate(variations, 1):
-            print(f"  Attempt {i}: Searching for '{variation}'")
-            
-            # Rate limiting - be respectful
-            time.sleep(0.5)
-            
-            api_response = search_apollo_organization(variation)
-            
-            attempt_record = {
-                'strategy': 'name_variation',
-                'query': variation,
-                'success': False,
-                'organizations_count': 0
-            }
-            
+            print(f"  Attempt {i}: '{variation}'")
+            time.sleep(0.2)
+            api_response = search_apollo_organization(variation, page=1, per_page=100)
+            attempt = {'strategy': 'name_variation', 'query': variation, 'success': False, 'organizations_count': 0}
             if api_response and api_response.get('organizations'):
-                all_organizations = api_response['organizations']
-                
-                # Filter for law firms only
-                law_firms = [org for org in all_organizations if is_law_firm(org.get('name', ''))]
-                
-                attempt_record['organizations_count'] = len(all_organizations)
-                attempt_record['law_firms_count'] = len(law_firms)
+                orgs = api_response['organizations']
+                attempt['organizations_count'] = len(orgs)
+                # Filter for law firms
+                law_firms = [org for org in orgs if is_law_firm(org.get('name', ''))]
+                print(f"    Found {len(orgs)} total organizations, {len(law_firms)} law firms")
                 
                 if law_firms:
-                    attempt_record['success'] = True
-                    
-                    print(f"    SUCCESS! Found {len(all_organizations)} total organizations, {len(law_firms)} law firms")
-                    for org in law_firms[:3]:  # Show first 3 law firms
-                        org_name = str(org.get('name', 'Unknown')).encode('ascii', 'ignore').decode('ascii')
-                        print(f"      - {org_name}")
-                    
-                    result['search_successful'] = True
-                    result['winning_strategy'] = 'name_variation'
-                    result['winning_query'] = variation
-                    result['organizations_found'] = law_firms  # Only store law firms
-                    result['attempts'].append(attempt_record)
-                    return result
+                    ranked = rank_and_dedupe_organizations(
+                        law_firms,
+                        input_query=variation,
+                        input_domain=None if is_public_domain(firm_domain) else extract_domain_root(firm_domain)
+                    )
+                    best, reason = choose_best_org(firm_name, firm_domain, ranked)
+                    if best:
+                        safe_name = best.get('name', 'Unknown').encode('ascii', 'ignore').decode('ascii')
+                        print(f"    SUCCESS! Selected: {safe_name} ({reason})")
+                        
+                        # Get people from this organization
+                        org_id = best.get('id')
+                        print(f"    Searching for attorneys at {safe_name}...")
+                        contacts = search_people_at_organization(org_id, safe_name)
+                        
+                        result.update({
+                            'search_successful': True,
+                            'winning_strategy': 'name_variation',
+                            'winning_query': variation,
+                            'organizations_found': [best],
+                            'selection_reason': reason,
+                            'contacts_found': len(contacts),
+                            'contacts': contacts
+                        })
+                        attempt['success'] = True
+                        result['attempts'].append(attempt)
+                        return result
+                    else:
+                        print(f"    No clear winner ({reason}); trying next variation...")
                 else:
-                    print(f"    Found {len(all_organizations)} organizations but no law firms")
+                    print(f"    No law firms found")
             else:
                 print(f"    No results found")
-            
-            result['attempts'].append(attempt_record)
-    
-    # Strategy 2: Try domain root as fallback
-    if firm_domain and firm_domain != 'N/A':
+            result['attempts'].append(attempt)
+
+    # Domain fallbacks only if not public email domains
+    if firm_domain and not is_public_domain(firm_domain):
         domain_root = extract_domain_root(firm_domain)
+
         if domain_root:
-            print(f"  Fallback: Searching by domain root '{domain_root}'")
-            
-            time.sleep(0.5)
-            
-            api_response = search_apollo_organization(domain_root)
-            
-            attempt_record = {
-                'strategy': 'domain_root',
-                'query': domain_root,
-                'success': False,
-                'organizations_count': 0
-            }
-            
+            print(f"  Fallback by domain-root-as-name: '{domain_root}'")
+            api_response = search_apollo_organization(domain_root, page=1, per_page=100)
+            attempt = {'strategy': 'domain_root_as_name', 'query': domain_root, 'success': False, 'organizations_count': 0}
             if api_response and api_response.get('organizations'):
-                all_organizations = api_response['organizations']
-                
-                # Filter for law firms only
-                law_firms = [org for org in all_organizations if is_law_firm(org.get('name', ''))]
-                
-                attempt_record['organizations_count'] = len(all_organizations)
-                attempt_record['law_firms_count'] = len(law_firms)
+                orgs = api_response['organizations']
+                attempt['organizations_count'] = len(orgs)
+                law_firms = [org for org in orgs if is_law_firm(org.get('name', ''))]
+                print(f"    Found {len(orgs)} total organizations, {len(law_firms)} law firms via domain")
                 
                 if law_firms:
-                    attempt_record['success'] = True
-                    
-                    print(f"    SUCCESS! Found {len(all_organizations)} total organizations, {len(law_firms)} law firms via domain")
-                    for org in law_firms[:3]:  # Show first 3 law firms
-                        org_name = str(org.get('name', 'Unknown')).encode('ascii', 'ignore').decode('ascii')
-                        print(f"      - {org_name}")
-                    
-                    result['search_successful'] = True
-                    result['winning_strategy'] = 'domain_root'
-                    result['winning_query'] = domain_root
-                    result['organizations_found'] = law_firms  # Only store law firms
-                    result['attempts'].append(attempt_record)
-                    return result
+                    ranked = rank_and_dedupe_organizations(law_firms, input_query=domain_root, input_domain=domain_root)
+                    best, reason = choose_best_org(firm_name, firm_domain, ranked)
+                    if best:
+                        safe_name = best.get('name', 'Unknown').encode('ascii', 'ignore').decode('ascii')
+                        print(f"    SUCCESS! Selected: {safe_name} ({reason})")
+                        
+                        # Get people from this organization
+                        org_id = best.get('id')
+                        print(f"    Searching for attorneys at {safe_name}...")
+                        contacts = search_people_at_organization(org_id, safe_name)
+                        
+                        result.update({
+                            'search_successful': True,
+                            'winning_strategy': 'domain_root_as_name',
+                            'winning_query': domain_root,
+                            'organizations_found': [best],
+                            'selection_reason': reason,
+                            'contacts_found': len(contacts),
+                            'contacts': contacts
+                        })
+                        attempt['success'] = True
+                        result['attempts'].append(attempt)
+                        return result
+                    else:
+                        print(f"    No clear winner ({reason}); trying next fallback...")
                 else:
-                    print(f"    Found {len(all_organizations)} organizations via domain but no law firms")
+                    print(f"    No law firms found via domain")
             else:
                 print(f"    No results found via domain")
+            result['attempts'].append(attempt)
+
+        print(f"  Fallback by exact domain: '{firm_domain}'")
+        api_response = search_apollo_organization(query="", domains=[firm_domain])
+        attempt = {'strategy': 'domain_exact', 'query': firm_domain, 'success': False, 'organizations_count': 0}
+        if api_response and api_response.get('organizations'):
+            orgs = api_response['organizations']
+            attempt['organizations_count'] = len(orgs)
+            law_firms = [org for org in orgs if is_law_firm(org.get('name', ''))]
+            print(f"    Found {len(orgs)} total organizations, {len(law_firms)} law firms via exact domain")
             
-            result['attempts'].append(attempt_record)
-    
+            if law_firms:
+                ranked = rank_and_dedupe_organizations(law_firms, input_query=firm_name or firm_domain, input_domain=domain_root)
+                best, reason = choose_best_org(firm_name, firm_domain, ranked)
+                if best:
+                    safe_name = best.get('name', 'Unknown').encode('ascii', 'ignore').decode('ascii')
+                    print(f"    SUCCESS! Selected: {safe_name} ({reason})")
+                    
+                    # Get people from this organization
+                    org_id = best.get('id')
+                    print(f"    Searching for attorneys at {safe_name}...")
+                    contacts = search_people_at_organization(org_id, safe_name)
+                    
+                    result.update({
+                        'search_successful': True,
+                        'winning_strategy': 'domain_exact',
+                        'winning_query': firm_domain,
+                        'organizations_found': [best],
+                        'selection_reason': reason,
+                        'contacts_found': len(contacts),
+                        'contacts': contacts
+                    })
+                    attempt['success'] = True
+                    result['attempts'].append(attempt)
+                    return result
+                else:
+                    print(f"    No clear winner ({reason}); no further fallbacks.")
+            else:
+                print(f"    No law firms found via exact domain")
+        else:
+            print(f"    No results found via exact domain")
+        result['attempts'].append(attempt)
+    else:
+        if firm_domain:
+            print(f"  Skipping domain fallback for public email domain: '{firm_domain}'")
+
     print(f"  FAILED: No organizations found for {firm_name}")
     return result
 
 def main():
-    """
-    Main function to process leads and search for organizations.
-    """
-    # Load leads data
     try:
         with open('lawyers_of_lead_poor.json', 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -478,164 +481,36 @@ def main():
         print("No leads found in the JSON file")
         return
 
-    print(f"Processing {len(leads)} leads...")
-    
-    results = []
-    processed_count = 0
-    successful_searches = 0
-    
+    print(f"Processing {len(leads)} leads (company lookup only)...")
+    results, processed_count, successful_searches = [], 0, 0
+
     for lead in leads:
-        # Skip if client email same as attorney email
-        if (lead.get('client_email') and lead.get('attorney_email') and 
-            lead.get('client_email') == lead.get('attorney_email')):
-            print(f"\nSkipping {lead.get('client_name')}: Client email same as attorney email")
-            continue
-        
-        # Only process leads that need enrichment
         if not lead.get('needs_apollo_enrichment', False):
-            print(f"\nSkipping {lead.get('client_name')}: No enrichment needed")
             continue
-        
         processed_count += 1
-        
-        # Search for the firm
+        # Use -> instead of unicode arrow for Windows compatibility
+        print(f"\nSearching firm for: {lead.get('client_name')} -> {lead.get('attorney_firm')}")
         search_result = search_firm_with_retry(lead)
-        
-        # Step 2: If we found organizations, check industry and get contacts
-        if search_result['search_successful'] and search_result.get('organizations_found'):
-            print(f"  Step 2: Processing organizations for {lead.get('client_name')}...")
-            
-            verified_legal_firms = []
-            
-            for org in search_result['organizations_found']:
-                org_id = org.get('id')
-                org_name = org.get('name', 'Unknown')
-                print(f"    Checking organization: {org_name}")
-                
-                # Since we already filtered for law firms by name, proceed to people search
-                # Step 2a: Organization enrichment (optional - skip if 422 errors)
-                website_url = org.get('website_url') or ''
-                org_domain = org.get('primary_domain') or website_url.replace('http://', '').replace('https://', '').split('/')[0] if website_url else None
-                enriched_org = enrich_organization_industry(org_id, org_domain)
-                time.sleep(0.5)  # Rate limiting
-                
-                # We already know it's a law firm from our name filtering, so proceed regardless
-                print(f"      Organization already identified as law firm - searching for contacts...")
-                
-                # Step 2b: Search for people at this organization
-                people_result = search_people_at_organization(org_id, org_name)
-                time.sleep(0.5)  # Rate limiting
-                
-                if people_result and people_result.get('people'):
-                    contacts = []
-                    for person in people_result['people']:
-                        person_name = person.get('first_name', '') + ' ' + person.get('last_name', '')
-                        linkedin_url = person.get('linkedin_url')
-                        title = person.get('title')
-                        
-                        print(f"        Enriching {person_name} ({title})...")
-                        
-                        # Step 2c: Use People Enrichment API to unlock email/phone (spends credits)
-                        # Pass multiple matching criteria for accuracy
-                        enriched_person = enrich_individual_person(
-                            person_name=person_name, 
-                            company_name=org_name, 
-                            linkedin_url=linkedin_url,
-                            title=title,
-                            domain=org.get('primary_domain')
-                        )
-                        time.sleep(0.5)  # Rate limiting
-                        
-                        if enriched_person and enriched_person.get('person'):
-                            # Use enriched data (with unlocked emails/phones)
-                            enriched_data = enriched_person['person']
-                            personal_emails = enriched_data.get('personal_emails', [])
-                            primary_email = personal_emails[0] if personal_emails else enriched_data.get('email')
-                            
-                            # Check for phone in different possible fields
-                            phone = None
-                            if enriched_data.get('phone_numbers'):
-                                phone = enriched_data['phone_numbers'][0].get('raw_number')
-                            elif enriched_data.get('mobile_phone'):
-                                phone = enriched_data['mobile_phone']
-                            elif enriched_data.get('phone'):
-                                phone = enriched_data['phone']
-                            
-                            contact = {
-                                'name': person_name,
-                                'title': enriched_data.get('title') or person.get('title'),
-                                'email': primary_email,
-                                'email_status': enriched_data.get('email_status'),
-                                'personal_emails': personal_emails,
-                                'phone': phone,
-                                'linkedin_url': linkedin_url,
-                                'enriched': True  # Mark as enriched with credits
-                            }
-                            print(f"          Unlocked: email={primary_email}, phone={phone}")
-                        else:
-                            # Fall back to basic data if enrichment fails
-                            personal_emails = person.get('personal_emails', [])
-                            primary_email = personal_emails[0] if personal_emails else person.get('email')
-                            
-                            contact = {
-                                'name': person_name,
-                                'title': person.get('title'),
-                                'email': primary_email,
-                                'email_status': person.get('email_status'),
-                                'personal_emails': personal_emails,
-                                'phone': None,
-                                'linkedin_url': linkedin_url,
-                                'enriched': False  # Not enriched
-                            }
-                            print(f"          Enrichment failed - using basic data")
-                        
-                        contacts.append(contact)
-                    
-                    # Add contacts to the organization data
-                    verified_firm = org.copy()
-                    verified_firm['industry_verified'] = True
-                    verified_firm['contacts_found'] = len(contacts)
-                    verified_firm['contacts'] = contacts
-                    verified_legal_firms.append(verified_firm)
-                    
-                    print(f"      Found {len(contacts)} attorney contacts")
-                else:
-                    print(f"      No attorney contacts found")
-            
-            # Update the search result with verified firms and contacts
-            search_result['organizations_found'] = verified_legal_firms
-            search_result['verified_legal_firms_count'] = len(verified_legal_firms)
-            search_result['total_contacts_found'] = sum(firm.get('contacts_found', 0) for firm in verified_legal_firms)
-        
         results.append(search_result)
-        
         if search_result['search_successful']:
             successful_searches += 1
-    
-    # Save results
-    output_data = {
+
+    output = {
         'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
+        'mode': 'companies_only',
         'total_leads_processed': processed_count,
         'successful_searches': successful_searches,
-        'success_rate': f"{(successful_searches/processed_count)*100:.1f}%" if processed_count > 0 else "0%",
+        'success_rate': f"{(successful_searches/processed_count)*100:.1f}%" if processed_count else "0%",
         'search_results': results
     }
-    
-    output_filename = 'apollo_search_results.json'
-    try:
-        with open(output_filename, 'w', encoding='utf-8') as f:
-            json.dump(output_data, f, indent=2, ensure_ascii=False)
-        
-        print(f"\n" + "="*60)
-        print(f"SEARCH COMPLETE")
-        print(f"Total leads processed: {processed_count}")
-        print(f"Successful searches: {successful_searches}")
-        print(f"Success rate: {output_data['success_rate']}")
-        print(f"Results saved to: {output_filename}")
-        print("="*60)
-        
-    except Exception as e:
-        print(f"Error saving results: {e}")
+
+    out_file = 'apollo_company_results.json'
+    with open(out_file, 'w', encoding='utf-8') as f:
+        json.dump(output, f, indent=2, ensure_ascii=False)
+    print("\n" + "="*60)
+    print(f"COMPANY SEARCH COMPLETE -> {out_file}")
+    print(f"Processed: {processed_count} | Success: {successful_searches} | Rate: {output['success_rate']}")
+    print("="*60)
 
 if __name__ == "__main__":
     main()

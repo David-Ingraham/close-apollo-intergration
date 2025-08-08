@@ -1,0 +1,600 @@
+{
+  "timestamp": "2025-08-08 15:13:44",
+  "mode": "companies_only",
+  "total_leads_processed": 10,
+  "successful_searches": 4,
+  "success_rate": "40.0%",
+  "search_results": [
+    {
+      "lead_id": "lead_0fAERVanGSnn6FhavKnArVl0oCmQw1W2gF5aNAeflvr",
+      "client_name": "Dan Murphy",
+      "firm_name": "kaner & pentaluga",
+      "search_successful": false,
+      "winning_strategy": null,
+      "winning_query": null,
+      "organizations_found": [],
+      "attempts": [
+        {
+          "strategy": "name_variation",
+          "query": "kaner & pentaluga",
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "name_variation",
+          "query": "\"kaner & pentaluga\"",
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "name_variation",
+          "query": "kaner pentaluga",
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "name_variation",
+          "query": "\"kaner pentaluga\"",
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "name_variation",
+          "query": "kaner and pentaluga",
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "name_variation",
+          "query": "kaner  pentaluga",
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "domain_root_as_name",
+          "query": "kpattorney",
+          "success": false,
+          "organizations_count": 2
+        },
+        {
+          "strategy": "domain_exact",
+          "query": "kpattorney.com",
+          "success": false,
+          "organizations_count": 63
+        }
+      ]
+    },
+    {
+      "lead_id": "lead_mLLn2fh9kzR7YEZRm8f5s1aATa9FGG1EsYjcOTL0UuE",
+      "client_name": "Jeramie Lyons",
+      "firm_name": "Angels Reyes",
+      "search_successful": false,
+      "winning_strategy": null,
+      "winning_query": null,
+      "organizations_found": [],
+      "attempts": [
+        {
+          "strategy": "name_variation",
+          "query": "Angels Reyes",
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "name_variation",
+          "query": "\"Angels Reyes\"",
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "name_variation",
+          "query": "Angels",
+          "success": false,
+          "organizations_count": 100
+        },
+        {
+          "strategy": "name_variation",
+          "query": "Reyes",
+          "success": false,
+          "organizations_count": 99
+        }
+      ]
+    },
+    {
+      "lead_id": "lead_35NGREyJ8O4DJ8qDc0wmJS9CpLzyVawRQWe2ezxTToY",
+      "client_name": "Tabitha McClarity",
+      "firm_name": "Johnny Phillips",
+      "search_successful": true,
+      "winning_strategy": "name_variation",
+      "winning_query": "Johnny Phillips",
+      "organizations_found": [
+        {
+          "id": "6710cff081ba560001cf7781",
+          "name": "Law Office of Johnny Phillips",
+          "primary_domain": "johnnyphillipslaw.com",
+          "website_url": "http://www.johnnyphillipslaw.com",
+          "linkedin_url": "http://www.linkedin.com/company/law-office-of-johnny-phillips",
+          "phone": "+1 833-564-6693",
+          "_score": 0.682
+        }
+      ],
+      "attempts": [
+        {
+          "strategy": "name_variation",
+          "query": "Johnny Phillips",
+          "success": true,
+          "organizations_count": 1
+        }
+      ],
+      "selection_reason": "exact_domain",
+      "contacts_found": 2,
+      "contacts": [
+        {
+          "name": "Johnny Phillips",
+          "title": "Trial Attorney",
+          "email": "email_not_unlocked@domain.com",
+          "linkedin_url": "http://www.linkedin.com/in/johnny-phillips-8a380976",
+          "phone": null
+        },
+        {
+          "name": "Taela Graham",
+          "title": "Litigation Paralegal",
+          "email": "email_not_unlocked@domain.com",
+          "linkedin_url": "http://www.linkedin.com/in/taela-bland",
+          "phone": null
+        }
+      ]
+    },
+    {
+      "lead_id": "lead_cQ4TUpTI5V1Mn3QUDw8JW2ksnh5QP8zpm5KrQixTx9p",
+      "client_name": "Jeffrey Kruscinski",
+      "firm_name": "Postman law",
+      "search_successful": true,
+      "winning_strategy": "name_variation",
+      "winning_query": "Postman law",
+      "organizations_found": [
+        {
+          "id": "66cbe9bd2bbc5b02d38c01bc",
+          "name": "Postman Law",
+          "primary_domain": "postmanlaw.com",
+          "website_url": "http://www.postmanlaw.com",
+          "linkedin_url": "http://www.linkedin.com/company/postmanlaw",
+          "phone": null,
+          "_score": 1.0
+        }
+      ],
+      "attempts": [
+        {
+          "strategy": "name_variation",
+          "query": "Postman law",
+          "success": true,
+          "organizations_count": 1
+        }
+      ],
+      "selection_reason": "score_ok:1.050",
+      "contacts_found": 4,
+      "contacts": [
+        {
+          "name": "Wafeek Elafifi",
+          "title": "Personal Injury Attorney",
+          "email": "email_not_unlocked@domain.com",
+          "linkedin_url": "http://www.linkedin.com/in/wafeekelafifi",
+          "phone": null
+        },
+        {
+          "name": "Joseph Casteel",
+          "title": "Personal Injury Attorney",
+          "email": "email_not_unlocked@domain.com",
+          "linkedin_url": "http://www.linkedin.com/in/joseph-casteel-2b99b48",
+          "phone": null
+        },
+        {
+          "name": "Michael Beci",
+          "title": "Attorney",
+          "email": "email_not_unlocked@domain.com",
+          "linkedin_url": "http://www.linkedin.com/in/michael-beci-56275165",
+          "phone": null
+        },
+        {
+          "name": "Marquel Longtin",
+          "title": "Partner and Chief Client Officer",
+          "email": "email_not_unlocked@domain.com",
+          "linkedin_url": "http://www.linkedin.com/in/marquelreddish",
+          "phone": null
+        }
+      ]
+    },
+    {
+      "lead_id": "lead_IAbyem7MrUIiZGccwZDnFzOrlAS3Cvo304bZTJJKocz",
+      "client_name": "Olasunkanmi Dada",
+      "firm_name": "Abramson Labor Group",
+      "search_successful": false,
+      "winning_strategy": null,
+      "winning_query": null,
+      "organizations_found": [],
+      "attempts": [
+        {
+          "strategy": "name_variation",
+          "query": "Abramson Labor Group",
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "name_variation",
+          "query": "\"Abramson Labor Group\"",
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "name_variation",
+          "query": "abramson labor",
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "name_variation",
+          "query": "\"abramson labor\"",
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "name_variation",
+          "query": "Abramson",
+          "success": false,
+          "organizations_count": 97
+        },
+        {
+          "strategy": "name_variation",
+          "query": "Labor",
+          "success": false,
+          "organizations_count": 99
+        }
+      ]
+    },
+    {
+      "lead_id": "lead_No6c1O8l2Jk2W7ZuSz47OPQCPh6SIopeclTZKsYDLp6",
+      "client_name": "Boyd Beer",
+      "firm_name": "Benson and bingham",
+      "search_successful": true,
+      "winning_strategy": "name_variation",
+      "winning_query": "Benson",
+      "organizations_found": [
+        {
+          "id": "5f31b74ca3294c008cf016fc",
+          "name": "Benson Percival Brown LLP",
+          "primary_domain": "bensonpercival.com",
+          "website_url": "http://www.bensonpercival.com",
+          "linkedin_url": "http://www.linkedin.com/company/benson-percival-brown-llp",
+          "phone": "+1 416-977-9777",
+          "_score": 0.387
+        }
+      ],
+      "attempts": [
+        {
+          "strategy": "name_variation",
+          "query": "Benson and bingham",
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "name_variation",
+          "query": "\"Benson and bingham\"",
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "name_variation",
+          "query": "Benson & bingham",
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "name_variation",
+          "query": "Benson bingham",
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "name_variation",
+          "query": "Benson",
+          "success": true,
+          "organizations_count": 99
+        }
+      ],
+      "selection_reason": "score_ok:0.541",
+      "contacts_found": 12,
+      "contacts": [
+        {
+          "name": "Darren Delaney",
+          "title": "Partner",
+          "email": "email_not_unlocked@domain.com",
+          "linkedin_url": "http://www.linkedin.com/in/darren-delaney-15771a22a",
+          "phone": null
+        },
+        {
+          "name": "Eli Lipetz",
+          "title": "Partner",
+          "email": "email_not_unlocked@domain.com",
+          "linkedin_url": "http://www.linkedin.com/in/eli-lipetz-06a2a027",
+          "phone": null
+        },
+        {
+          "name": "Heather Vaughan",
+          "title": "Partner",
+          "email": "email_not_unlocked@domain.com",
+          "linkedin_url": "http://www.linkedin.com/in/vaughanheather",
+          "phone": null
+        },
+        {
+          "name": "Jiku Elamathail",
+          "title": "Partner",
+          "email": "email_not_unlocked@domain.com",
+          "linkedin_url": "http://www.linkedin.com/in/jiku-elamathail-2b4977b0",
+          "phone": null
+        },
+        {
+          "name": "Cory Young",
+          "title": "Partner",
+          "email": "email_not_unlocked@domain.com",
+          "linkedin_url": "http://www.linkedin.com/in/cory-young-469494a9",
+          "phone": null
+        },
+        {
+          "name": "Evan Kopiak",
+          "title": "Partner",
+          "email": "email_not_unlocked@domain.com",
+          "linkedin_url": "http://www.linkedin.com/in/evan-kopiak-252a9b92",
+          "phone": null
+        },
+        {
+          "name": "David Young",
+          "title": "Partner",
+          "email": "email_not_unlocked@domain.com",
+          "linkedin_url": "http://www.linkedin.com/in/david-young-20963536",
+          "phone": null
+        },
+        {
+          "name": "David Patton",
+          "title": "Partner",
+          "email": "email_not_unlocked@domain.com",
+          "linkedin_url": "http://www.linkedin.com/in/david-patton-136b7892",
+          "phone": null
+        },
+        {
+          "name": "Louise Morin",
+          "title": "Lawyer",
+          "email": "email_not_unlocked@domain.com",
+          "linkedin_url": "http://www.linkedin.com/in/louise-morin-a03a9921",
+          "phone": null
+        },
+        {
+          "name": "Emma Najgoldberg",
+          "title": "Associate Lawyer",
+          "email": "email_not_unlocked@domain.com",
+          "linkedin_url": "http://www.linkedin.com/in/emma-najgoldberg-37a101148",
+          "phone": null
+        },
+        {
+          "name": "Vanessa Corridore",
+          "title": "Lawyer",
+          "email": "email_not_unlocked@domain.com",
+          "linkedin_url": "http://www.linkedin.com/in/vanessa-corridore-4a9a00141",
+          "phone": null
+        },
+        {
+          "name": "Liz Oh",
+          "title": "Senior Paralegal",
+          "email": "email_not_unlocked@domain.com",
+          "linkedin_url": "http://www.linkedin.com/in/liz-oh-46a43a163",
+          "phone": null
+        }
+      ]
+    },
+    {
+      "lead_id": "lead_3zTJP86MYuu7haHdmSIpOD16MKgaBAF2GqCKLZztlsb",
+      "client_name": "Dave Vanpelt",
+      "firm_name": "Downtown LA Law",
+      "search_successful": false,
+      "winning_strategy": null,
+      "winning_query": null,
+      "organizations_found": [],
+      "attempts": [
+        {
+          "strategy": "name_variation",
+          "query": "Downtown LA Law",
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "name_variation",
+          "query": "\"Downtown LA Law\"",
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "name_variation",
+          "query": "Downtown Los Angeles Law",
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "name_variation",
+          "query": "DTLA Law Group",
+          "success": false,
+          "organizations_count": 0
+        }
+      ]
+    },
+    {
+      "lead_id": "lead_HJZQBoQI8xQQnLUmbXoGH5sIjun3EtUbKrlAq87aBME",
+      "client_name": "Janice Williams",
+      "firm_name": "The Law Offices of  Rotstein & Shiffman, LLP",
+      "search_successful": true,
+      "winning_strategy": "name_variation",
+      "winning_query": "Shiffman",
+      "organizations_found": [
+        {
+          "id": "64210c5f8eb4120001175d41",
+          "name": "Jenkins & Shiffman Family Law",
+          "primary_domain": "jenkinsandshiffmanlaw.com",
+          "website_url": "http://www.jenkinsandshiffmanlaw.com",
+          "linkedin_url": "http://www.linkedin.com/company/jenkins-and-shiffman-family-law",
+          "phone": "+1 502-581-0050",
+          "_score": 0.432
+        }
+      ],
+      "attempts": [
+        {
+          "strategy": "name_variation",
+          "query": "The Law Offices of  Rotstein & Shiffman, LLP",
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "name_variation",
+          "query": "\"The Law Offices of  Rotstein & Shiffman, LLP\"",
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "name_variation",
+          "query": "rotstein shiffman",
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "name_variation",
+          "query": "\"rotstein shiffman\"",
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "name_variation",
+          "query": "Rotstein & Shiffman",
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "name_variation",
+          "query": "\"Rotstein & Shiffman\"",
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "name_variation",
+          "query": "Rotstein and Shiffman",
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "name_variation",
+          "query": "Rotstein  Shiffman",
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "name_variation",
+          "query": "Rotstein",
+          "success": false,
+          "organizations_count": 8
+        },
+        {
+          "strategy": "name_variation",
+          "query": "Shiffman",
+          "success": true,
+          "organizations_count": 9
+        }
+      ],
+      "selection_reason": "score_ok:0.547",
+      "contacts_found": 0,
+      "contacts": []
+    },
+    {
+      "lead_id": "lead_KwBNBaE2ExoZSJBctjfTu1rqKPPHOkq2toTaD0cVQon",
+      "client_name": "David Hilerio",
+      "firm_name": "Josh turim",
+      "search_successful": false,
+      "winning_strategy": null,
+      "winning_query": null,
+      "organizations_found": [],
+      "attempts": [
+        {
+          "strategy": "name_variation",
+          "query": "Josh turim",
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "name_variation",
+          "query": "\"Josh turim\"",
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "name_variation",
+          "query": "Josh",
+          "success": false,
+          "organizations_count": 99
+        },
+        {
+          "strategy": "domain_root_as_name",
+          "query": "workinjuryfirm",
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "domain_exact",
+          "query": "workinjuryfirm.com",
+          "success": false,
+          "organizations_count": 63
+        }
+      ]
+    },
+    {
+      "lead_id": "lead_5Z6aUKI3BZUVH4wYt3RjF1UjvIl267Vj6np8SHAYWMy",
+      "client_name": "Richard Henderson",
+      "firm_name": "farzam Law Firm",
+      "search_successful": false,
+      "winning_strategy": null,
+      "winning_query": null,
+      "organizations_found": [],
+      "attempts": [
+        {
+          "strategy": "name_variation",
+          "query": "farzam Law Firm",
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "name_variation",
+          "query": "\"farzam Law Firm\"",
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "name_variation",
+          "query": "farzam",
+          "success": false,
+          "organizations_count": 12
+        },
+        {
+          "strategy": "name_variation",
+          "query": "\"farzam\"",
+          "success": false,
+          "organizations_count": 10
+        },
+        {
+          "strategy": "domain_root_as_name",
+          "query": "farzamlaw",
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "domain_exact",
+          "query": "farzamlaw.com",
+          "success": false,
+          "organizations_count": 63
+        }
+      ]
+    }
+  ]
+}

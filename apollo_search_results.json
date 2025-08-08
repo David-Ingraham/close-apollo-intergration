@@ -1,8 +1,8 @@
 {
-  "timestamp": "2025-08-07 15:28:50",
+  "timestamp": "2025-08-08 13:19:21",
   "total_leads_processed": 6,
-  "successful_searches": 4,
-  "success_rate": "66.7%",
+  "successful_searches": 3,
+  "success_rate": "50.0%",
   "search_results": [
     {
       "lead_id": "lead_0fAERVanGSnn6FhavKnArVl0oCmQw1W2gF5aNAeflvr",
@@ -43,43 +43,37 @@
           "organization_headcount_twelve_month_growth": 0.6666666666666666,
           "organization_headcount_twenty_four_month_growth": 0.25,
           "industry_verified": true,
-          "contacts_found": 4,
+          "contacts_found": 3,
           "contacts": [
             {
               "name": "Lindiwe Mthayise",
               "title": "Attorneys",
-              "email": "email_not_unlocked@domain.com",
+              "email": null,
               "email_status": "unavailable",
               "personal_emails": [],
               "phone": null,
-              "linkedin_url": "http://www.linkedin.com/in/lindiwe-mthayise-73100121"
+              "linkedin_url": "http://www.linkedin.com/in/lindiwe-mthayise-73100121",
+              "enriched": true
             },
             {
               "name": "Kim Pistor",
               "title": "Owner of KP Attorneys",
-              "email": "email_not_unlocked@domain.com",
+              "email": null,
               "email_status": "unavailable",
               "personal_emails": [],
               "phone": null,
-              "linkedin_url": "http://www.linkedin.com/in/kim-pistor-attorney-conveyancer-and-legal-advisor-02783a121"
+              "linkedin_url": "http://www.linkedin.com/in/kim-pistor-attorney-conveyancer-and-legal-advisor-02783a121",
+              "enriched": true
             },
             {
               "name": "Ashleigh Bowker",
               "title": "Candidate Attorney",
-              "email": "email_not_unlocked@domain.com",
+              "email": null,
               "email_status": "unavailable",
               "personal_emails": [],
               "phone": null,
-              "linkedin_url": "http://www.linkedin.com/in/ashbowker"
-            },
-            {
-              "name": "Precious Makai",
-              "title": "Candidate Attorney",
-              "email": "email_not_unlocked@domain.com",
-              "email_status": "unavailable",
-              "personal_emails": [],
-              "phone": null,
-              "linkedin_url": "http://www.linkedin.com/in/precious-makai-789507237"
+              "linkedin_url": "http://www.linkedin.com/in/ashbowker",
+              "enriched": true
             }
           ]
         },
@@ -119,20 +113,22 @@
             {
               "name": "Mark Pahor",
               "title": "Partner",
-              "email": "email_not_unlocked@domain.com",
+              "email": null,
               "email_status": "unavailable",
               "personal_emails": [],
               "phone": null,
-              "linkedin_url": "http://www.linkedin.com/in/mpahor"
+              "linkedin_url": "http://www.linkedin.com/in/mpahor",
+              "enriched": true
             },
             {
               "name": "Tracy Kayser",
               "title": "Partner",
-              "email": "email_not_unlocked@domain.com",
+              "email": null,
               "email_status": "unavailable",
               "personal_emails": [],
               "phone": null,
-              "linkedin_url": "http://www.linkedin.com/in/tracy-kayser-999a80b1"
+              "linkedin_url": "http://www.linkedin.com/in/tracy-kayser-999a80b1",
+              "enriched": true
             }
           ]
         }
@@ -171,7 +167,7 @@
         }
       ],
       "verified_legal_firms_count": 2,
-      "total_contacts_found": 6
+      "total_contacts_found": 5
     },
     {
       "lead_id": "lead_35NGREyJ8O4DJ8qDc0wmJS9CpLzyVawRQWe2ezxTToY",
@@ -228,16 +224,18 @@
                 "phillips.johnny@gmail.com"
               ],
               "phone": null,
-              "linkedin_url": "http://www.linkedin.com/in/johnny-phillips-8a380976"
+              "linkedin_url": "http://www.linkedin.com/in/johnny-phillips-8a380976",
+              "enriched": true
             },
             {
               "name": "Taela Graham",
               "title": "Litigation Paralegal",
-              "email": "email_not_unlocked@domain.com",
+              "email": "taela@johnnyphillipslaw.com",
               "email_status": "verified",
               "personal_emails": [],
               "phone": null,
-              "linkedin_url": "http://www.linkedin.com/in/taela-bland"
+              "linkedin_url": "http://www.linkedin.com/in/taela-bland",
+              "enriched": true
             }
           ]
         }
@@ -258,174 +256,32 @@
       "lead_id": "lead_3zTJP86MYuu7haHdmSIpOD16MKgaBAF2GqCKLZztlsb",
       "client_name": "Dave Vanpelt",
       "firm_name": "Downtown LA Law",
-      "search_successful": true,
-      "winning_strategy": "name_variation",
-      "winning_query": "Downtown LA Law",
-      "organizations_found": [
-        {
-          "id": "6480deb9d38a8a00a39d3d34",
-          "name": "Downtown LA Law Group",
-          "website_url": null,
-          "blog_url": null,
-          "angellist_url": null,
-          "linkedin_url": "http://www.linkedin.com/company/downtown-la-law-group",
-          "twitter_url": null,
-          "facebook_url": null,
-          "primary_phone": {},
-          "languages": [],
-          "alexa_ranking": null,
-          "phone": null,
-          "linkedin_uid": "91457026",
-          "founded_year": null,
-          "publicly_traded_symbol": null,
-          "publicly_traded_exchange": null,
-          "logo_url": "https://zenprospect-production.s3.amazonaws.com/uploads/pictures/688b48a58bb39700017ad8e8/picture",
-          "crunchbase_url": null,
-          "primary_domain": null,
-          "owned_by_organization_id": null,
-          "organization_revenue_printed": null,
-          "organization_revenue": 0.0,
-          "intent_strength": null,
-          "show_intent": true,
-          "has_intent_signal_account": false,
-          "intent_signal_account": null,
-          "organization_headcount_six_month_growth": 0.0,
-          "organization_headcount_twelve_month_growth": 0.03225806451612903,
-          "organization_headcount_twenty_four_month_growth": 0.5238095238095238,
-          "industry_verified": true,
-          "contacts_found": 13,
-          "contacts": [
-            {
-              "name": "Deborah Rankin-Haley",
-              "title": "Paralegal",
-              "email": "email_not_unlocked@domain.com",
-              "email_status": "verified",
-              "personal_emails": [],
-              "phone": null,
-              "linkedin_url": "http://www.linkedin.com/in/deborah-rankin-haley-02958014"
-            },
-            {
-              "name": "Nina Sargsyan",
-              "title": "Attorney",
-              "email": "email_not_unlocked@domain.com",
-              "email_status": "verified",
-              "personal_emails": [],
-              "phone": null,
-              "linkedin_url": "http://www.linkedin.com/in/nina-sargsyan-6302aa1b0"
-            },
-            {
-              "name": "John Rofael",
-              "title": null,
-              "email": "email_not_unlocked@domain.com",
-              "email_status": "verified",
-              "personal_emails": [],
-              "phone": null,
-              "linkedin_url": "http://www.linkedin.com/in/john-rofael-817b931aa"
-            },
-            {
-              "name": "Vanessa Ambriz",
-              "title": "Paralegal",
-              "email": "email_not_unlocked@domain.com",
-              "email_status": "verified",
-              "personal_emails": [],
-              "phone": null,
-              "linkedin_url": "http://www.linkedin.com/in/vanessa-ambriz-05abb9183"
-            },
-            {
-              "name": "Lili Martin",
-              "title": "Attorney",
-              "email": "email_not_unlocked@domain.com",
-              "email_status": "verified",
-              "personal_emails": [],
-              "phone": null,
-              "linkedin_url": "http://www.linkedin.com/in/lili-martin-245710198"
-            },
-            {
-              "name": "Leistyn Zamoran Gonzales",
-              "title": "Asistente legal",
-              "email": "email_not_unlocked@domain.com",
-              "email_status": "extrapolated",
-              "personal_emails": [],
-              "phone": null,
-              "linkedin_url": "http://www.linkedin.com/in/leistyn-ernesto-zamoran-gonzales-255b4a16a"
-            },
-            {
-              "name": "Delina Yasmeh",
-              "title": "Founding Partner",
-              "email": "email_not_unlocked@domain.com",
-              "email_status": "verified",
-              "personal_emails": [],
-              "phone": null,
-              "linkedin_url": "http://www.linkedin.com/in/delinayasmeh"
-            },
-            {
-              "name": "Michael Juarez-Munoz",
-              "title": "Litigation Attorney",
-              "email": "email_not_unlocked@domain.com",
-              "email_status": "verified",
-              "personal_emails": [],
-              "phone": null,
-              "linkedin_url": "http://www.linkedin.com/in/michael-juarez-munoz-231942296"
-            },
-            {
-              "name": "Martha Gutierrez",
-              "title": "Paralegal",
-              "email": "email_not_unlocked@domain.com",
-              "email_status": null,
-              "personal_emails": [],
-              "phone": null,
-              "linkedin_url": "http://www.linkedin.com/in/martha-gutierrez-a9422821b"
-            },
-            {
-              "name": "Daniel Azizi",
-              "title": "Partner",
-              "email": "email_not_unlocked@domain.com",
-              "email_status": "verified",
-              "personal_emails": [],
-              "phone": null,
-              "linkedin_url": "http://www.linkedin.com/in/daniel-azizi-dtlalawgroup"
-            },
-            {
-              "name": "Natalia Ayala",
-              "title": "Litigation Paralegal - Personal Injury",
-              "email": "email_not_unlocked@domain.com",
-              "email_status": "unavailable",
-              "personal_emails": [],
-              "phone": null,
-              "linkedin_url": "http://www.linkedin.com/in/nataliemayala"
-            },
-            {
-              "name": "Omar Hamed",
-              "title": "Attorney",
-              "email": "email_not_unlocked@domain.com",
-              "email_status": null,
-              "personal_emails": [],
-              "phone": null,
-              "linkedin_url": "http://www.linkedin.com/in/omar-hamed-2b5a26171"
-            },
-            {
-              "name": "Zeltzin Diaz",
-              "title": "Litigation Paralegal",
-              "email": "email_not_unlocked@domain.com",
-              "email_status": null,
-              "personal_emails": [],
-              "phone": null,
-              "linkedin_url": "http://www.linkedin.com/in/zeltzin-diaz-5878b326a"
-            }
-          ]
-        }
-      ],
+      "search_successful": false,
+      "winning_strategy": null,
+      "winning_query": null,
+      "organizations_found": [],
       "attempts": [
         {
           "strategy": "name_variation",
           "query": "Downtown LA Law",
-          "success": true,
-          "organizations_count": 1,
-          "law_firms_count": 1
+          "success": false,
+          "organizations_count": 0
+        },
+        {
+          "strategy": "name_variation",
+          "query": "Downtown",
+          "success": false,
+          "organizations_count": 9,
+          "law_firms_count": 0
+        },
+        {
+          "strategy": "domain_root",
+          "query": "yahoo",
+          "success": false,
+          "organizations_count": 10,
+          "law_firms_count": 0
         }
-      ],
-      "verified_legal_firms_count": 1,
-      "total_contacts_found": 13
+      ]
     },
     {
       "lead_id": "lead_HJZQBoQI8xQQnLUmbXoGH5sIjun3EtUbKrlAq87aBME",
@@ -482,16 +338,18 @@
                 "upekha.wedage@hotmail.com"
               ],
               "phone": null,
-              "linkedin_url": "http://www.linkedin.com/in/upekha-wedage-16056226"
+              "linkedin_url": "http://www.linkedin.com/in/upekha-wedage-16056226",
+              "enriched": true
             },
             {
               "name": "Tianran L.",
               "title": "Property Lawyer",
-              "email": "email_not_unlocked@domain.com",
+              "email": null,
               "email_status": "unavailable",
               "personal_emails": [],
               "phone": null,
-              "linkedin_url": "http://www.linkedin.com/in/tianran-l-75b408160"
+              "linkedin_url": "http://www.linkedin.com/in/tianran-l-75b408160",
+              "enriched": true
             }
           ]
         }
