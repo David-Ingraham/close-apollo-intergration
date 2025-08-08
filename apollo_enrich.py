@@ -217,15 +217,38 @@ def choose_best_org(lead_firm_name, firm_domain, candidates):
 
     def score(c):
         name = (c.get("name") or "").lower()
+        domain = c.get("primary_domain") or ""
         tokens_in = len(core_tokens & set(name.split()))
         core_cov = tokens_in / max(1, len(core_tokens))
         sim = difflib.SequenceMatcher(None, name, core).ratio()
         bonus = 0.0
+        
+        # Legal firm bonus
         if name_has_legal_hint(name): bonus += 0.08
+        
+        # Acronym matching bonus
         if acro and acro in name.replace(' ', ''): bonus += 0.06
-        if dom_root and c.get("primary_domain") and dom_root in c["primary_domain"].lower(): bonus += 0.06
+        
+        # Domain matching bonuses (heavily weighted)
+        if dom_root and domain:
+            if dom_root in domain.lower(): bonus += 0.15  # Strong domain match
+            # Check if query tokens appear in domain
+            for token in core_tokens:
+                if len(token) > 2 and token in domain.lower(): bonus += 0.10
+        
+        # Bonus for having any real domain vs "no-domain"
+        if domain and domain != "no-domain": bonus += 0.05
+        
+        # Name token matching bonus (for cases like "KP" matching "KP Attorneys")
+        query_words = set(lead_firm_name.lower().split()) if lead_firm_name else set()
+        name_words = set(name.split())
+        word_matches = len(query_words & name_words)
+        if word_matches > 0: bonus += word_matches * 0.05
+        
+        # LinkedIn presence
         if c.get("linkedin_url"): bonus += 0.02
-        return sim*0.7 + core_cov*0.25 + bonus
+        
+        return sim*0.6 + core_cov*0.3 + bonus
 
     ranked = sorted(candidates, key=score, reverse=True)
     
@@ -246,27 +269,33 @@ def choose_best_org(lead_firm_name, firm_domain, candidates):
     top_s = score(top)
     runner_s = score(runner) if runner else 0.0
 
-    # Must be a law firm AND have decent similarity
+    # Must be a law firm
     if not name_has_legal_hint(top.get("name", "")):
         return None, f"not_law_firm:{top_s:.3f}"
     
-    # Stricter thresholds for law firms
-    if top_s >= 0.45 and (top_s - runner_s) >= 0.05:
+    # Relaxed thresholds - accept closer matches
+    gap = top_s - runner_s
+    if top_s >= 0.35 and gap >= 0.02:
         return top, f"score_ok:{top_s:.3f}"
     
-    # For individual attorney searches (like "Josh" from "Josh turim"), be more strict
-    if len(core_tokens) == 1 and top_s < 0.60:
-        return None, f"single_name_too_low:{top_s:.3f}"
+    # Accept tied scores or very close matches
+    if gap <= 0.02 and top_s >= 0.35:
+        return top, f"close_match:{top_s:.3f}"
+    
+    # For single token searches, be more permissive if it's clearly a law firm
+    if len(core_tokens) == 1 and top_s >= 0.40:
+        return top, f"single_token_match:{top_s:.3f}"
         
     return None, f"ambiguous:{top_s:.3f}/{runner_s:.3f}"
 
 def search_people_at_organization(org_id, org_name):
-    """Search for attorneys/partners at a specific organization"""
+    """Search for attorneys/partners at a specific organization and unlock their emails"""
     api_key = os.getenv('APOLLO_API_KEY')
     if not api_key:
         raise ValueError("APOLLO_API_KEY not found in environment variables")
 
-    url = "https://api.apollo.io/api/v1/mixed_people/search"
+    # Step 1: Get people list (without emails unlocked)
+    search_url = "https://api.apollo.io/api/v1/mixed_people/search"
     headers = {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache',
@@ -276,35 +305,97 @@ def search_people_at_organization(org_id, org_name):
     payload = {
         "organization_ids": [org_id],
         "person_titles": ["attorney", "partner", "lawyer", "counsel", "paralegal"],
-        "email_statuses": ["verified"],
         "page": 1,
         "per_page": 25
     }
 
     try:
-        response = requests.post(url, headers=headers, json=payload)
+        response = requests.post(search_url, headers=headers, json=payload)
         response.raise_for_status()
         result = response.json()
         
         people = result.get("people", [])
         print(f"      Found {len(people)} legal professionals")
         
-        contacts = []
-        for person in people:
-            contact = {
-                'name': f"{person.get('first_name', '')} {person.get('last_name', '')}".strip(),
-                'title': person.get('title'),
-                'email': person.get('email'),
-                'linkedin_url': person.get('linkedin_url'),
-                'phone': None
+        if not people:
+            return []
+        
+        print(f"      Unlocking emails for {len(people)} contacts...")
+        
+        # Step 2: Enrich each person to unlock their email
+        enrich_url = "https://api.apollo.io/api/v1/people/match"
+        enriched_contacts = []
+        
+        for i, person in enumerate(people, 1):
+            # Use person data to enrich and unlock email
+            enrich_payload = {
+                "first_name": person.get('first_name'),
+                "last_name": person.get('last_name'),
+                "organization_name": org_name,
+                "reveal_personal_emails": True,
+                "reveal_phone_number": False  # We'll do phones separately via webhook
             }
-            contacts.append(contact)
             
-        return contacts
+            try:
+                enrich_response = requests.post(enrich_url, headers=headers, json=enrich_payload)
+                if enrich_response.status_code == 200:
+                    enriched_data = enrich_response.json()
+                    enriched_person = enriched_data.get('person', {})
+                    
+                    # Check if we got a real email
+                    email = enriched_person.get('email')
+                    if email and email != 'email_not_unlocked@domain.com':
+                        contact = {
+                            'name': f"{enriched_person.get('first_name', '')} {enriched_person.get('last_name', '')}".strip(),
+                            'title': enriched_person.get('title') or person.get('title'),
+                            'email': email,
+                            'linkedin_url': enriched_person.get('linkedin_url'),
+                            'phone': None,
+                            'organization_id': org_id,
+                            'person_id': enriched_person.get('id')
+                        }
+                        enriched_contacts.append(contact)
+                        print(f"        [{i:2d}/{len(people)}] ✓ {contact['name']} - {email}")
+                    else:
+                        print(f"        [{i:2d}/{len(people)}] ✗ {person.get('first_name')} {person.get('last_name')} - No email available")
+                else:
+                    print(f"        [{i:2d}/{len(people)}] ✗ {person.get('first_name')} {person.get('last_name')} - Enrichment failed ({enrich_response.status_code})")
+                
+                # Rate limiting to avoid Apollo API limits
+                time.sleep(1)
+                
+            except Exception as e:
+                print(f"        [{i:2d}/{len(people)}] ERROR enriching {person.get('first_name')}: {e}")
+        
+        print(f"      Successfully unlocked {len(enriched_contacts)}/{len(people)} emails")
+        return enriched_contacts
         
     except requests.exceptions.RequestException as e:
         print(f"      ERROR: People search failed for '{org_name}': {e}")
         return []
+
+def search_people_with_fallback(candidates, firm_name):
+    """Try multiple organizations until we find people"""
+    for i, org in enumerate(candidates):
+        org_id = org.get('id')
+        org_name = org.get('name', 'Unknown')
+        safe_name = org_name.encode('ascii', 'ignore').decode('ascii')
+        
+        print(f"    Trying organization #{i+1}: {safe_name}")
+        contacts = search_people_at_organization(org_id, safe_name)
+        
+        if contacts:
+            print(f"      SUCCESS! Found {len(contacts)} people")
+            return org, contacts, f"fallback_org_{i+1}"
+        else:
+            print(f"      No people found, trying next organization...")
+    
+    # If no org has people, return the first one anyway
+    if candidates:
+        org = candidates[0]
+        return org, [], "no_people_found"
+    
+    return None, [], "no_candidates"
 
 def search_firm_with_retry(lead_data):
     result = {
@@ -347,10 +438,11 @@ def search_firm_with_retry(lead_data):
                         safe_name = best.get('name', 'Unknown').encode('ascii', 'ignore').decode('ascii')
                         print(f"    SUCCESS! Selected: {safe_name} ({reason})")
                         
-                        # Get people from this organization
-                        org_id = best.get('id')
-                        print(f"    Searching for attorneys at {safe_name}...")
-                        contacts = search_people_at_organization(org_id, safe_name)
+                        # Try multiple organizations until we find people
+                        org, contacts, selection_reason = search_people_with_fallback(ranked, firm_name)
+                        if org:
+                            safe_name = org.get('name', 'Unknown').encode('ascii', 'ignore').decode('ascii')
+                            print(f"    FINAL SELECTION: {safe_name} ({selection_reason})")
                         
                         result.update({
                             'search_successful': True,
@@ -393,10 +485,11 @@ def search_firm_with_retry(lead_data):
                         safe_name = best.get('name', 'Unknown').encode('ascii', 'ignore').decode('ascii')
                         print(f"    SUCCESS! Selected: {safe_name} ({reason})")
                         
-                        # Get people from this organization
-                        org_id = best.get('id')
-                        print(f"    Searching for attorneys at {safe_name}...")
-                        contacts = search_people_at_organization(org_id, safe_name)
+                        # Try multiple organizations until we find people
+                        org, contacts, selection_reason = search_people_with_fallback(ranked, firm_name)
+                        if org:
+                            safe_name = org.get('name', 'Unknown').encode('ascii', 'ignore').decode('ascii')
+                            print(f"    FINAL SELECTION: {safe_name} ({selection_reason})")
                         
                         result.update({
                             'search_successful': True,
@@ -434,10 +527,11 @@ def search_firm_with_retry(lead_data):
                     safe_name = best.get('name', 'Unknown').encode('ascii', 'ignore').decode('ascii')
                     print(f"    SUCCESS! Selected: {safe_name} ({reason})")
                     
-                    # Get people from this organization
-                    org_id = best.get('id')
-                    print(f"    Searching for attorneys at {safe_name}...")
-                    contacts = search_people_at_organization(org_id, safe_name)
+                    # Try multiple organizations until we find people
+                    org, contacts, selection_reason = search_people_with_fallback(ranked, firm_name)
+                    if org:
+                        safe_name = org.get('name', 'Unknown').encode('ascii', 'ignore').decode('ascii')
+                        print(f"    FINAL SELECTION: {safe_name} ({selection_reason})")
                     
                     result.update({
                         'search_successful': True,
@@ -464,6 +558,69 @@ def search_firm_with_retry(lead_data):
 
     print(f"  FAILED: No organizations found for {firm_name}")
     return result
+
+def enrich_people_at_organization(org_id, org_name):
+    """Get people from org, then enrich each one individually to unlock emails"""
+    api_key = os.getenv('APOLLO_API_KEY')
+    
+    # Step 1: Get people list (no emails unlocked yet)
+    search_url = "https://api.apollo.io/api/v1/mixed_people/search"
+    headers = {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache',
+        'X-Api-Key': api_key
+    }
+    
+    payload = {
+        "organization_ids": [org_id],
+        "person_titles": ["attorney", "partner", "lawyer", "counsel", "paralegal"],
+        "page": 1,
+        "per_page": 25
+    }
+    
+    # Get people list
+    response = requests.post(search_url, headers=headers, json=payload)
+    people = response.json().get("people", [])
+    print(f"      Found {len(people)} legal professionals")
+    
+    # Step 2: Enrich each person to unlock their email
+    enriched_contacts = []
+    enrich_url = "https://api.apollo.io/api/v1/people/match"
+    
+    for person in people:
+        # Use person data to enrich and unlock email
+        enrich_payload = {
+            "first_name": person.get('first_name'),
+            "last_name": person.get('last_name'),
+            "organization_name": org_name,
+            "reveal_personal_emails": True  # THIS is the correct parameter
+        }
+        
+        try:
+            enrich_response = requests.post(enrich_url, headers=headers, json=enrich_payload)
+            if enrich_response.status_code == 200:
+                enriched_person = enrich_response.json().get('person', {})
+                
+                contact = {
+                    'name': f"{enriched_person.get('first_name', '')} {enriched_person.get('last_name', '')}".strip(),
+                    'title': enriched_person.get('title'),
+                    'email': enriched_person.get('email'),  # Real email now
+                    'linkedin_url': enriched_person.get('linkedin_url'),
+                    'phone': None,
+                    'organization_id': org_id,
+                    'person_id': enriched_person.get('id')
+                }
+                enriched_contacts.append(contact)
+                print(f"        ✓ Enriched {contact['name']} - {contact['email']}")
+            else:
+                print(f"        ✗ Failed to enrich {person.get('first_name')} {person.get('last_name')}")
+            
+            time.sleep(0.5)  # Rate limiting
+            
+        except Exception as e:
+            print(f"        ERROR enriching {person.get('first_name')}: {e}")
+    
+    return enriched_contacts
 
 def main():
     try:
