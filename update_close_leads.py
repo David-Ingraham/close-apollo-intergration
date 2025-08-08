@@ -16,8 +16,8 @@ def get_close_auth_header():
     encoded_key = b64encode(f"{api_key}:".encode('utf-8')).decode('utf-8')
     return f'Basic {encoded_key}'
 
-def check_existing_contacts(lead_id, lawyer_email):
-    """Check if lawyer already exists as contact on this lead"""
+def check_existing_contacts(lead_id):
+    """Get all existing contacts for a lead"""
     url = f"https://api.close.com/api/v1/contact/?lead_id={lead_id}"
     headers = {
         'Authorization': get_close_auth_header(),
@@ -29,118 +29,175 @@ def check_existing_contacts(lead_id, lawyer_email):
         response.raise_for_status()
         
         contacts = response.json().get('data', [])
-        
-        # Check if any existing contact has this email
-        for contact in contacts:
-            contact_emails = [email.get('email', '').lower() for email in contact.get('emails', [])]
-            if lawyer_email.lower() in contact_emails:
-                return contact['id']  # Return existing contact ID
-        
-        return None  # No existing contact found
+        return contacts
         
     except Exception as e:
         print(f"    ERROR checking existing contacts: {e}")
-        return None
+        return []
 
-def add_lawyer_to_lead(lead_id, client_name, firm_name, lawyer_data, phone_data=None):
-    """Add a lawyer as a contact to the existing lead in Close CRM"""
+def find_matching_contact(existing_contacts, lawyer_name, lawyer_email):
+    """Find if lawyer already exists by name or email"""
+    lawyer_name_lower = lawyer_name.lower().strip()
+    lawyer_email_lower = lawyer_email.lower().strip()
     
-    url = "https://api.close.com/api/v1/contact/"
-    headers = {
-        'Authorization': get_close_auth_header(),
-        'Content-Type': 'application/json'
-    }
-    
-    # Prepare contact payload
-    emails = []
-    if lawyer_data.get('email') and lawyer_data['email'] != 'email_not_unlocked@domain.com':
-        emails.append({
-            "email": lawyer_data['email'],
-            "type": "work"
-        })
-    
-    phones = []
-    if phone_data:
-        for phone_info in phone_data.get('phone_numbers', []):
-            phones.append({
-                "phone": phone_info.get('sanitized_number') or phone_info.get('raw_number'),
-                "type": phone_info.get('type_cd', 'work')
-            })
-    
-    payload = {
-        "lead_id": lead_id,
-        "name": lawyer_data['name'],
-        "title": lawyer_data.get('title', 'Attorney'),
-        "emails": emails,
-        "phones": phones
-    }
-    
-    try:
-        response = requests.post(url, headers=headers, json=payload)
-        response.raise_for_status()
+    for contact in existing_contacts:
+        # Check by name match
+        contact_name = contact.get('name', '').lower().strip()
+        if contact_name == lawyer_name_lower:
+            return contact
         
-        # Show what was added
-        contact_info = [f"{lawyer_data['name']} ({lawyer_data.get('title', 'Attorney')})"]
-        if emails:
-            contact_info.append(f"Email: {emails[0]['email']}")
-        if phones:
-            contact_info.append(f"Phone: {phones[0]['phone']}")
-            if len(phones) > 1:
-                contact_info.append(f"+ {len(phones)-1} more phones")
-        
-        print(f"    ✓ Added {' | '.join(contact_info)}")
-        return response.json()['id']
-        
-    except Exception as e:
-        print(f"    ✗ Failed to add {lawyer_data['name']}: {e}")
-        return None
+        # Check by email match
+        contact_emails = contact.get('emails', [])
+        for email_obj in contact_emails:
+            if email_obj.get('email', '').lower().strip() == lawyer_email_lower:
+                return contact
+    
+    return None
 
 def update_existing_contact(contact_id, lawyer_data, phone_data=None):
-    """Update existing contact with new phone/email data"""
+    """Update existing contact with missing phone/email data"""
     url = f"https://api.close.com/api/v1/contact/{contact_id}/"
     headers = {
         'Authorization': get_close_auth_header(),
         'Content-Type': 'application/json'
     }
     
-    # Get current contact data first
     try:
+        # Get current contact data
         response = requests.get(url, headers=headers)
         response.raise_for_status()
         current_data = response.json()
         
-        # Merge new phone data with existing
-        existing_phones = current_data.get('phones', [])
+        current_emails = current_data.get('emails', [])
+        current_phones = current_data.get('phones', [])
+        
+        # Check what needs to be added
+        new_emails = []
         new_phones = []
+        updates_made = []
         
+        # Check if lawyer email needs to be added
+        lawyer_email = lawyer_data.get('email')
+        if lawyer_email and lawyer_email != 'email_not_unlocked@domain.com':
+            email_exists = any(
+                email_obj.get('email', '').lower() == lawyer_email.lower() 
+                for email_obj in current_emails
+            )
+            
+            if not email_exists:
+                new_emails.append({
+                    "email": lawyer_email,
+                    "type": "work"
+                })
+                updates_made.append(f"Added email: {lawyer_email}")
+        
+        # Check if phone numbers need to be added
         if phone_data:
+            existing_phone_numbers = [
+                phone_obj.get('phone', '').replace(' ', '').replace('-', '').replace('(', '').replace(')', '')
+                for phone_obj in current_phones
+            ]
+            
             for phone_info in phone_data.get('phone_numbers', []):
-                phone_number = phone_info.get('sanitized_number') or phone_info.get('raw_number')
-                # Check if this phone already exists
-                if not any(phone_number in existing_phone.get('phone', '') for existing_phone in existing_phones):
-                    new_phones.append({
-                        "phone": phone_number,
-                        "type": phone_info.get('type_cd', 'work')
-                    })
+                new_phone = phone_info.get('sanitized_number') or phone_info.get('raw_number')
+                if new_phone:
+                    # Normalize phone for comparison
+                    normalized_new = new_phone.replace(' ', '').replace('-', '').replace('(', '').replace(')', '')
+                    
+                    # Check if this phone already exists
+                    if not any(normalized_new in existing_phone for existing_phone in existing_phone_numbers):
+                        new_phones.append({
+                            "phone": new_phone,
+                            "type": phone_info.get('type_cd', 'work')
+                        })
+                        updates_made.append(f"Added phone: {new_phone}")
         
-        if new_phones:
-            # Update with new phone numbers
+        # Update contact if we have new data
+        if new_emails or new_phones:
             update_payload = {
-                "phones": existing_phones + new_phones
+                "emails": current_emails + new_emails,
+                "phones": current_phones + new_phones
             }
             
             response = requests.put(url, headers=headers, json=update_payload)
             response.raise_for_status()
             
-            print(f"    ✓ Updated {lawyer_data['name']} with {len(new_phones)} new phone numbers")
-            return contact_id
+            print(f"    ✓ Updated {lawyer_data['name']}: {', '.join(updates_made)}")
+            return True
         else:
-            print(f"    ⚠ {lawyer_data['name']} - no new data to update")
-            return contact_id
+            print(f"    ⚠ {lawyer_data['name']} already has all available contact info")
+            return False
             
     except Exception as e:
-        print(f"    ✗ Error updating contact {lawyer_data['name']}: {e}")
+        print(f"    ✗ Error updating {lawyer_data['name']}: {e}")
+        return False
+
+def add_lawyer_to_lead(lead_id, client_name, firm_name, lawyer_data, phone_data=None, existing_contacts=None):
+    """Add a lawyer as a contact or update existing contact with new info"""
+    
+    lawyer_email = lawyer_data.get('email')
+    if not lawyer_email or lawyer_email == 'email_not_unlocked@domain.com':
+        print(f"    ⚠ Skipping {lawyer_data['name']} - no valid email")
         return None
+    
+    # Check if lawyer already exists
+    if existing_contacts is None:
+        existing_contacts = check_existing_contacts(lead_id)
+    
+    existing_contact = find_matching_contact(existing_contacts, lawyer_data['name'], lawyer_email)
+    
+    if existing_contact:
+        # Update existing contact
+        print(f"    → {lawyer_data['name']} already exists - checking for updates...")
+        success = update_existing_contact(existing_contact['id'], lawyer_data, phone_data)
+        return existing_contact['id'] if success else None
+    
+    else:
+        # Create new contact
+        url = "https://api.close.com/api/v1/contact/"
+        headers = {
+            'Authorization': get_close_auth_header(),
+            'Content-Type': 'application/json'
+        }
+        
+        # Prepare contact payload
+        emails = [{
+            "email": lawyer_email,
+            "type": "work"
+        }]
+        
+        phones = []
+        if phone_data:
+            for phone_info in phone_data.get('phone_numbers', []):
+                phones.append({
+                    "phone": phone_info.get('sanitized_number') or phone_info.get('raw_number'),
+                    "type": phone_info.get('type_cd', 'work')
+                })
+        
+        payload = {
+            "lead_id": lead_id,
+            "name": lawyer_data['name'],
+            "title": lawyer_data.get('title', 'Attorney'),
+            "emails": emails,
+            "phones": phones
+        }
+        
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            
+            # Show what was added
+            contact_info = [f"{lawyer_data['name']} ({lawyer_data.get('title', 'Attorney')})"]
+            contact_info.append(f"Email: {lawyer_email}")
+            if phones:
+                contact_info.append(f"{len(phones)} phone(s)")
+            
+            print(f"    ✓ Created new contact: {' | '.join(contact_info)}")
+            return response.json()['id']
+            
+        except Exception as e:
+            print(f"    ✗ Failed to create {lawyer_data['name']}: {e}")
+            return None
 
 def load_phone_data():
     """Load phone data from webhook responses if available"""
@@ -263,11 +320,12 @@ def process_company_results():
             print("  No contacts to add")
             continue
         
+        # Get existing contacts once for this lead
+        existing_contacts = check_existing_contacts(lead_id)
+        if existing_contacts:
+            print(f"  Found {len(existing_contacts)} existing contacts on this lead")
+        
         for lawyer in contacts:
-            if not lawyer.get('email') or lawyer['email'] == 'email_not_unlocked@domain.com':
-                print(f"  ⚠ Skipping {lawyer['name']} - no valid email")
-                continue
-            
             # Get phone data for this lawyer if available and requested
             lawyer_phone_data = None
             if include_phones:
@@ -278,8 +336,8 @@ def process_company_results():
                     phone_count = len(lawyer_phone_data.get('phone_numbers', []))
                     print(f"    📞 Found {phone_count} phone numbers for {lawyer['name']}")
             
-            # Add lawyer to Close lead
-            contact_id = add_lawyer_to_lead(lead_id, client_name, firm_name, lawyer, lawyer_phone_data)
+            # Add/update lawyer in Close lead
+            contact_id = add_lawyer_to_lead(lead_id, client_name, firm_name, lawyer, lawyer_phone_data, existing_contacts)
             if contact_id:
                 total_contacts_added += 1
             
