@@ -175,31 +175,21 @@ def send_phone_requests(enriched_data):
         return False
         
     try:
-        # Temporarily save the enriched data for get_apollo_nums.py
-        temp_file = 'temp_apollo_company_results.json'
-        with open(temp_file, 'w', encoding='utf-8') as f:
+        # Save enriched data directly to the file get_apollo_nums.py expects
+        with open('apollo_company_results.json', 'w', encoding='utf-8') as f:
             json.dump(enriched_data, f, indent=2, ensure_ascii=False)
-        
-        # Create symlink for compatibility
-        if os.path.exists('apollo_company_results.json'):
-            os.remove('apollo_company_results.json')
-        os.symlink(temp_file, 'apollo_company_results.json')
         
         # Run the phone enrichment script
         result = subprocess.run(['python', 'get_apollo_nums.py'], 
                               input="3\n", text=True, capture_output=True)
-        
-        # Clean up temporary files
-        if os.path.islink('apollo_company_results.json'):
-            os.unlink('apollo_company_results.json')
-        if os.path.exists(temp_file):
-            os.remove(temp_file)
             
         if result.returncode == 0:
             print(" Phone enrichment requests sent successfully")
             return True
         else:
-            print(f" Phone enrichment may have failed, but continuing...")
+            print(f" Phone enrichment failed (return code: {result.returncode})")
+            print(f" STDOUT: {result.stdout}")
+            print(f" STDERR: {result.stderr}")
             return False
             
     except Exception as e:
@@ -216,33 +206,21 @@ def update_close_with_emails(enriched_data):
         return False
         
     try:
-        # Call update function directly with emails only
-        # TODO: Refactor update_close_leads.py to accept data directly
-        # For now, use temporary file approach
-        temp_file = 'temp_apollo_results_for_emails.json'
-        with open(temp_file, 'w', encoding='utf-8') as f:
+        # Save enriched data directly to the file update_close_leads.py expects
+        with open('apollo_company_results.json', 'w', encoding='utf-8') as f:
             json.dump(enriched_data, f, indent=2, ensure_ascii=False)
-        
-        # Create symlink for compatibility
-        if os.path.exists('apollo_company_results.json'):
-            os.remove('apollo_company_results.json')
-        os.symlink(temp_file, 'apollo_company_results.json')
         
         # Run the update script (emails only)
         result = subprocess.run(['python', 'update_close_leads.py'], 
                               input="n\n", text=True, capture_output=True)
-        
-        # Clean up
-        if os.path.islink('apollo_company_results.json'):
-            os.unlink('apollo_company_results.json')
-        if os.path.exists(temp_file):
-            os.remove(temp_file)
             
         if result.returncode == 0:
             print(" Successfully added lawyer contacts with emails")
             return True
         else:
-            print(f" Failed to update Close CRM with emails")
+            print(f" Failed to update Close CRM with emails (return code: {result.returncode})")
+            print(f" STDOUT: {result.stdout}")
+            print(f" STDERR: {result.stderr}")
             return False
             
     except Exception as e:
@@ -280,7 +258,7 @@ def wait_for_webhook_data(timeout_minutes=30):
             except Exception as e:
                 print(f"Error checking webhook data: {e}")
         
-        print(f"⏳ Still waiting... ({int((time.time() - start_time) / 60)} min elapsed)")
+        print(f"Still waiting... ({int((time.time() - start_time) / 60)} min elapsed)")
         time.sleep(30)  # Check every 30 seconds
     
     print(f" Timeout reached ({timeout_minutes} minutes)")

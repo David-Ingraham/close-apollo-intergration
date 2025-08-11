@@ -7,6 +7,23 @@ import time
 
 load_dotenv()
 
+# Defensive string helper functions to prevent NoneType errors
+def safe_str(value):
+    """Convert None to empty string, keep strings as-is"""
+    return str(value) if value is not None else ''
+
+def safe_lower(text):
+    """Safely convert to lowercase, handles None"""
+    return safe_str(text).lower()
+
+def safe_strip(text):
+    """Safely strip whitespace, handles None"""
+    return safe_str(text).strip()
+
+def safe_split(text, delimiter):
+    """Safely split string, handles None"""
+    return safe_str(text).split(delimiter)
+
 def get_close_auth_header():
     """Get Close CRM authentication header"""
     api_key = os.getenv('CLOSE_API_KEY')
@@ -15,6 +32,40 @@ def get_close_auth_header():
     
     encoded_key = b64encode(f"{api_key}:".encode('utf-8')).decode('utf-8')
     return f'Basic {encoded_key}'
+
+def extract_domain_root(domain):
+    """Extract the root domain (e.g., 'example' from 'example.com')"""
+    if not domain:
+        return None
+    return domain.split('.')[0].lower()
+
+def is_domain_related(contact_email, attorney_firm_domain):
+    """Check if contact email domain is related to the attorney firm domain"""
+    if not contact_email or not attorney_firm_domain:
+        return True  # If we don't have domain info, allow the contact
+    
+    if '@' not in contact_email:
+        return False
+    
+    contact_domain = safe_lower(safe_split(contact_email, '@')[1])
+    attorney_domain = safe_lower(attorney_firm_domain)
+    
+    # Exact domain match
+    if contact_domain == attorney_domain:
+        return True
+    
+    # Check if domain roots match (e.g., andersonhemmat.com vs andersonhemmat.net)
+    contact_root = extract_domain_root(contact_domain)
+    attorney_root = extract_domain_root(attorney_domain)
+    
+    if contact_root and attorney_root and contact_root == attorney_root:
+        return True
+    
+    # Check if one domain contains the other (subdomain relationships)
+    if attorney_domain in contact_domain or contact_domain in attorney_domain:
+        return True
+    
+    return False
 
 def check_existing_contacts(lead_id):
     """Get all existing contacts for a lead"""
@@ -37,19 +88,19 @@ def check_existing_contacts(lead_id):
 
 def find_matching_contact(existing_contacts, lawyer_name, lawyer_email):
     """Find if lawyer already exists by name or email"""
-    lawyer_name_lower = lawyer_name.lower().strip()
-    lawyer_email_lower = lawyer_email.lower().strip()
+    lawyer_name_lower = safe_lower(safe_strip(lawyer_name))
+    lawyer_email_lower = safe_lower(safe_strip(lawyer_email))
     
     for contact in existing_contacts:
         # Check by name match
-        contact_name = contact.get('name', '').lower().strip()
+        contact_name = safe_lower(safe_strip(contact.get('name')))
         if contact_name == lawyer_name_lower:
             return contact
         
         # Check by email match
         contact_emails = contact.get('emails', [])
         for email_obj in contact_emails:
-            if email_obj.get('email', '').lower().strip() == lawyer_email_lower:
+            if safe_lower(safe_strip(email_obj.get('email'))) == lawyer_email_lower:
                 return contact
     
     return None
@@ -122,23 +173,33 @@ def update_existing_contact(contact_id, lawyer_data, phone_data=None):
             response = requests.put(url, headers=headers, json=update_payload)
             response.raise_for_status()
             
-            print(f"    ✓ Updated {lawyer_data['name']}: {', '.join(updates_made)}")
+            print(f"    [UPDATED] {lawyer_data['name']}: {', '.join(updates_made)}")
             return True
         else:
-            print(f"    ⚠ {lawyer_data['name']} already has all available contact info")
+            print(f"    [SKIP] {lawyer_data['name']} already has all available contact info")
             return False
             
     except Exception as e:
-        print(f"    ✗ Error updating {lawyer_data['name']}: {e}")
+        print(f"    [ERROR] Error updating {lawyer_data['name']}: {e}")
         return False
 
-def add_lawyer_to_lead(lead_id, client_name, firm_name, lawyer_data, phone_data=None, existing_contacts=None):
+def add_lawyer_to_lead(lead_id, client_name, firm_name, lawyer_data, phone_data=None, existing_contacts=None, attorney_firm_domain=None):
     """Add a lawyer as a contact or update existing contact with new info"""
     
     lawyer_email = lawyer_data.get('email')
     if not lawyer_email or lawyer_email == 'email_not_unlocked@domain.com':
-        print(f"    ⚠ Skipping {lawyer_data['name']} - no valid email")
+        print(f"    [SKIP] {lawyer_data['name']} - no valid email")
         return None
+    
+    # Domain validation - ensure contact email domain matches the attorney firm domain
+    if attorney_firm_domain:
+        if not is_domain_related(lawyer_email, attorney_firm_domain):
+            contact_domain = safe_split(lawyer_email, '@')[1] if '@' in safe_str(lawyer_email) else 'unknown'
+            print(f"    [SKIP] {lawyer_data['name']} - email domain mismatch")
+            print(f"           Attorney firm domain: {attorney_firm_domain}")
+            print(f"           Contact email domain: {contact_domain}")
+            print(f"           This contact appears to be from a different organization")
+            return None
     
     # Check if lawyer already exists
     if existing_contacts is None:
@@ -148,7 +209,7 @@ def add_lawyer_to_lead(lead_id, client_name, firm_name, lawyer_data, phone_data=
     
     if existing_contact:
         # Update existing contact
-        print(f"    → {lawyer_data['name']} already exists - checking for updates...")
+        print(f"    [EXISTS] {lawyer_data['name']} already exists - checking for updates...")
         success = update_existing_contact(existing_contact['id'], lawyer_data, phone_data)
         return existing_contact['id'] if success else None
     
@@ -192,11 +253,11 @@ def add_lawyer_to_lead(lead_id, client_name, firm_name, lawyer_data, phone_data=
             if phones:
                 contact_info.append(f"{len(phones)} phone(s)")
             
-            print(f"    ✓ Created new contact: {' | '.join(contact_info)}")
+            print(f"    [CREATED] New contact: {' | '.join(contact_info)}")
             return response.json()['id']
             
         except Exception as e:
-            print(f"    ✗ Failed to create {lawyer_data['name']}: {e}")
+            print(f"    [ERROR] Failed to create {lawyer_data['name']}: {e}")
             return None
 
 def load_phone_data():
@@ -258,17 +319,17 @@ def process_company_results():
                         phone_count += len(person.get('phone_numbers', []))
             
             if phone_count > 0:
-                print(f"\n📞 Found webhook_data.json with {phone_count} phone numbers available")
+                print(f"\n[PHONE DATA] Found webhook_data.json with {phone_count} phone numbers available")
                 
                 while True:
                     choice = input("Include phone numbers in the update? (y/n): ").lower().strip()
                     if choice in ['y', 'yes']:
                         include_phones = True
-                        print("✓ Will include phone numbers from webhook data")
+                        print("[OK] Will include phone numbers from webhook data")
                         break
                     elif choice in ['n', 'no']:
                         include_phones = False
-                        print("✓ Will update emails only")
+                        print("[OK] Will update emails only")
                         break
                     else:
                         print("Please enter 'y' or 'n'")
@@ -285,16 +346,16 @@ def process_company_results():
                     
                     print(f"Loaded phone data for {len(phone_data)} people")
             else:
-                print("\n📞 webhook_data.json found but no phone numbers available")
-                print("✓ Will update emails only")
+                print("\n[PHONE DATA] webhook_data.json found but no phone numbers available")
+                print("[OK] Will update emails only")
         
         except Exception as e:
-            print(f"\n⚠ Warning: Could not load webhook_data.json: {e}")
-            print("✓ Will update emails only")
+            print(f"\n[WARNING] Could not load webhook_data.json: {e}")
+            print("[OK] Will update emails only")
     
     else:
-        print("\n📞 No webhook_data.json found")
-        print("✓ Will update emails only")
+        print("\n[PHONE DATA] No webhook_data.json found")
+        print("[OK] Will update emails only")
         print("   Run get_apollo_nums.py and wait for webhook responses to get phone numbers")
     
     total_contacts_added = 0
@@ -311,10 +372,13 @@ def process_company_results():
         lead_id = result['lead_id']
         client_name = result['client_name']
         firm_name = result['firm_name']
+        attorney_firm_domain = result.get('firm_domain')  # Get original attorney firm domain
         contacts = result.get('contacts', [])
         
         print(f"\n{client_name} -> {firm_name} ({len(contacts)} lawyers)")
         print(f"Lead ID: {lead_id}")
+        if attorney_firm_domain:
+            print(f"Attorney domain: {attorney_firm_domain}")
         
         if not contacts:
             print("  No contacts to add")
@@ -334,10 +398,10 @@ def process_company_results():
                 
                 if lawyer_phone_data:
                     phone_count = len(lawyer_phone_data.get('phone_numbers', []))
-                    print(f"    📞 Found {phone_count} phone numbers for {lawyer['name']}")
+                    print(f"    [PHONE] Found {phone_count} phone numbers for {lawyer['name']}")
             
-            # Add/update lawyer in Close lead
-            contact_id = add_lawyer_to_lead(lead_id, client_name, firm_name, lawyer, lawyer_phone_data, existing_contacts)
+            # Add/update lawyer in Close lead with domain validation
+            contact_id = add_lawyer_to_lead(lead_id, client_name, firm_name, lawyer, lawyer_phone_data, existing_contacts, attorney_firm_domain)
             if contact_id:
                 total_contacts_added += 1
             
@@ -348,7 +412,7 @@ def process_company_results():
     print(f"CLOSE CRM UPDATE COMPLETE")
     print(f"Total contacts added: {total_contacts_added}")
     if include_phones:
-        print(f"Included phone numbers: ✓")
+        print(f"Included phone numbers: [OK]")
     else:
         print(f"Phone numbers: Not included")
     print(f"{'=' * 60}")

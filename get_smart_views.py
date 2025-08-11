@@ -36,10 +36,38 @@ def get_smart_views():
             # Print all Smart Views with their IDs
             print("\nAvailable Smart Views:")
             print("-" * 50)
-            for view in data['data']:
+            
+            # Store all views for searching
+            all_views = data['data']
+            
+            for view in all_views:
                 print(f"Name: {view['name']}")
                 print(f"ID: {view['id']}")
                 print("-" * 50)
+            
+            # Search for the specific view you're looking for
+            print(f"\nTotal views found: {len(all_views)}")
+            print("\nSearching for 'Closed Won' views:")
+            closed_won_views = [v for v in all_views if 'closed won' in v['name'].lower()]
+            
+            if closed_won_views:
+                print("Found Closed Won views:")
+                for view in closed_won_views:
+                    print(f"  Name: {view['name']}")
+                    print(f"  ID: {view['id']}")
+            else:
+                print("No 'Closed Won' views found.")
+                print("\nSearching for any 'won' or 'closed' views:")
+                related_views = [v for v in all_views if 'won' in v['name'].lower() or 'closed' in v['name'].lower()]
+                for view in related_views:
+                    print(f"  Name: {view['name']}")
+                    print(f"  ID: {view['id']}")
+            
+            # Check if there might be more results (pagination)
+            has_more = data.get('has_more', False)
+            if has_more:
+                print(f"\nWARNING: There are more views available (pagination). This only shows the first page.")
+                print("Consider adding pagination to see all views.")
         else:
             print("\nError Response:")
             print(response.text)

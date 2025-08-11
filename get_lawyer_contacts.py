@@ -18,8 +18,11 @@ def get_todays_leads():
     encoded_key = b64encode(f"{api_key}:".encode('utf-8')).decode('utf-8')
 
     # Set up the request using Advanced Filtering API
+    closed_lost_view_id = "save_pkn62aAZeRFBxpo26Ued3BG8gKqoltIN5h9k9cBUvkL"
     todays_leads_view_id = "save_ebxRoBR5KEXJz0jTSCfn1xyaXMQYBHmskqU6iCOoZd9"
-    all_meta_leads_view_id = "save_TOTstqdumHKQcNUaztinosJBnRDPYd7IAMhU2SuKyVH"
+    full_week_no_contact_view_id="save_4vCZn8S0aEOI7LITSdgww6NHyEYPK42OKKo0UUq9xK0"
+    uncalled_leads_view_id="save_PF9vEDVO1gpuE96xWcJheorDdvwTzZC78h7VSUNWtpz"
+    leads_created_by_mattias="save_uWiE0ZujkNKqQHG19ugGz5dIba891rC9Jd8sgIGqgXh"
     url = 'https://api.close.com/api/v1/data/search/'
     
     headers = {
@@ -28,39 +31,97 @@ def get_todays_leads():
         'Accept': 'application/json'
     }
 
-    # Try today's leads first
-    print("Checking today's leads smart view...")
+    # Get uncalled leads
+    print("Fetching uncalled leads smart view...")
     payload = {
         "query": {
             "type": "saved_search",
-            "saved_search_id": todays_leads_view_id
+            "saved_search_id": uncalled_leads_view_id
         },
         "_fields": {
             "lead": ["id", "display_name", "status_id", "name", "contacts", "custom"]
         },
-        "results_limit": 100
+        "_limit": 100,
+        "_skip": 0
     }
 
     try:
-        # Make the POST request to Advanced Filtering API
-        response = requests.post(url, headers=headers, json=payload)
-        response.raise_for_status()  # Raise an error for bad status codes
+        all_leads = []
+        page_count = 0
+        seen_lead_ids = set()
         
-        # Parse the leads
-        leads = response.json()
-        lead_count = len(leads.get('data', []))
+        while True:
+            page_count += 1
+            # Make the POST request to Advanced Filtering API
+            response = requests.post(url, headers=headers, json=payload)
+            print(f"asking for uncalled leads view (page {page_count})")
+            response.raise_for_status()  # Raise an error for bad status codes
+            
+            leads = response.json()
+            page_leads = leads.get('data', [])
+            
+            print(f"Found {len(page_leads)} leads on page {page_count}")
+            
+            # Debug: Show pagination info
+            print(f"API Response keys: {list(leads.keys())}")
+            
+            # Check for empty page or no new leads
+            if not page_leads:
+                print("No more pages (empty results)")
+                break
+            
+            # For skip-based pagination, if we get fewer results than requested, we're at the end
+            if len(page_leads) < payload['_limit']:
+                print(f"Got {len(page_leads)} leads (less than limit {payload['_limit']}) - reached end")
+                all_leads.extend(page_leads)
+                print(f"Added {len(page_leads)} leads (total: {len(all_leads)})")
+                break
+            
+            # Check for duplicate leads (shouldn't happen with skip-based, but safety check)
+            new_leads = []
+            duplicates_found = 0
+            for lead in page_leads:
+                lead_id = lead.get('id')
+                if lead_id not in seen_lead_ids:
+                    seen_lead_ids.add(lead_id)
+                    new_leads.append(lead)
+                else:
+                    duplicates_found += 1
+            
+            if duplicates_found > 0:
+                print(f"WARNING: Found {duplicates_found} duplicate leads with skip-based pagination")
+                
+            all_leads.extend(new_leads)
+            print(f"Added {len(new_leads)} new leads (total: {len(all_leads)})")
+                
+            # Continue to next page using skip-based pagination
+                
+            # Set skip for next page (skip-based pagination)
+            payload['_skip'] = page_count * payload['_limit']
+            print(f"Setting skip to: {payload['_skip']}")
+            
+            # Small delay to avoid overwhelming the API
+            if page_count > 1:
+                print("Waiting 1 second before next page...")
+                import time
+                time.sleep(1)
         
-        if lead_count > 0:
-            print(f"Found {lead_count} leads in today's leads view")
-            return leads
+        print(f"Total leads retrieved: {len(all_leads)} across {page_count} pages")
+        
+        if len(all_leads) > 0:
+            # Return in the same format as before
+            final_result = leads.copy()  # Keep metadata from last response
+            final_result['data'] = all_leads
+            return final_result
         else:
-            print("No leads found in today's leads view, falling back to all meta leads...")
+            print("No leads found in uncalled leads view, falling back to all meta leads...")
             
-            # Fallback to all meta leads 
-            payload["query"]["saved_search_id"] = all_meta_leads_view_id
+            # Reset pagination for fallback
+            payload["query"]["saved_search_id"] = leads_created_by_mattias
             payload["results_limit"] = 100  # Process more leads
+            payload["_cursor"] = None  # Reset cursor
             
-            print(f"DEBUG: Requesting from smart view: {all_meta_leads_view_id}")
+            print(f"DEBUG: Requesting from smart view: {leads_created_by_mattias}")
             print(f"DEBUG: Request payload: {json.dumps(payload, indent=2)}")
             
             response = requests.post(url, headers=headers, json=payload)
@@ -193,7 +254,7 @@ def process_leads_data(leads_data):
 
 if __name__ == "__main__":
     # Test the function
-    print("Fetching today's leads...")
+    print("Fetching closed lost leads...")
     leads = get_todays_leads()
     if leads:
         print(f"Successfully retrieved {len(leads.get('data', []))} leads")

@@ -61,7 +61,7 @@ def show_company_results_summary(data):
                 'contacts': len(contacts)
             })
             
-            print(f"\n✓ {result['client_name']} -> {result['firm_name']}")
+            print(f"\n[SUCCESS] {result['client_name']} -> {result['firm_name']}")
             print(f"    Contacts found: {len(contacts)}")
             for contact in contacts[:3]:  # Show first 3
                 title = contact.get('title', 'No title')
@@ -70,7 +70,7 @@ def show_company_results_summary(data):
             if len(contacts) > 3:
                 print(f"      ... and {len(contacts)-3} more")
         else:
-            print(f"\n✗ {result['client_name']} -> {result['firm_name']} (search failed)")
+            print(f"\n[FAILED] {result['client_name']} -> {result['firm_name']} (search failed)")
     
     print(f"\nSUMMARY:")
     print(f"  Successful firms: {len(successful_firms)}")
@@ -92,13 +92,13 @@ def test_webhook_server(ngrok_url):
         print(f"   Status: {response.status_code}")
         if response.status_code == 200:
             print(f"   Response: {response.json()}")
-            print("   ✓ Webhook server is healthy")
+            print("   [OK] Webhook server is healthy")
         else:
-            print("   ✗ Webhook server returned error")
+            print("   [ERROR] Webhook server returned error")
             return False
             
     except requests.exceptions.RequestException as e:
-        print(f"   ✗ Cannot connect to webhook server: {e}")
+        print(f"   [ERROR] Cannot connect to webhook server: {e}")
         print("   Make sure webhook_server.py is running and ngrok tunnel is active")
         return False
     
@@ -108,14 +108,14 @@ def test_webhook_server(ngrok_url):
         response = requests.post(f"{ngrok_url}/test-webhook", timeout=10)
         print(f"   Status: {response.status_code}")
         if response.status_code == 200:
-            print("   ✓ Mock webhook successful")
+            print("   [OK] Mock webhook successful")
             return True
         else:
-            print("   ✗ Mock webhook failed")
+            print("   [ERROR] Mock webhook failed")
             return False
             
     except requests.exceptions.RequestException as e:
-        print(f"   ✗ Mock webhook failed: {e}")
+        print(f"   [ERROR] Mock webhook failed: {e}")
         return False
 
 def extract_contacts_for_enrichment(data):
@@ -169,22 +169,22 @@ def send_phone_enrichment_request(target, webhook_url):
         if response.status_code == 200:
             result = response.json()
             person = result.get('person', {})
-            status = person.get('status', 'unknown')
             
-            if status == 'success':
-                print(f"   ✓ {contact['name']} - Enrichment queued successfully")
+            # Apollo phone enrichment requests are successful if we get a 200 with person data
+            if person and person.get('id'):
+                print(f"   [OK] {contact['name']} - Phone enrichment request sent successfully")
                 return True
             else:
-                print(f"   ⚠ {contact['name']} - Status: {status}")
+                print(f"   [ERROR] {contact['name']} - No person data in response")
                 return False
                 
         elif response.status_code == 422:
             error_detail = response.json() if response.text else "Unknown validation error"
-            print(f"   ✗ {contact['name']} - Validation error: {error_detail}")
+            print(f"   [ERROR] {contact['name']} - Validation error: {error_detail}")
             return False
             
         else:
-            print(f"   ✗ {contact['name']} - HTTP {response.status_code}")
+            print(f"   [ERROR] {contact['name']} - HTTP {response.status_code}")
             try:
                 error_detail = response.json()
                 print(f"       Details: {error_detail}")
@@ -193,10 +193,10 @@ def send_phone_enrichment_request(target, webhook_url):
             return False
             
     except requests.exceptions.Timeout:
-        print(f"   ✗ {contact['name']} - Request timeout")
+        print(f"   [ERROR] {contact['name']} - Request timeout")
         return False
     except Exception as e:
-        print(f"   ✗ {contact['name']} - Error: {e}")
+        print(f"   [ERROR] {contact['name']} - Error: {e}")
         return False
 
 def process_all_enrichments(data, webhook_url):
@@ -317,7 +317,7 @@ def main():
         webhook_ok = test_webhook_server(ngrok_url)
         
         if not webhook_ok:
-            print("\n⚠ WARNING: Webhook test failed!")
+            print("\n[WARNING] Webhook test failed!")
             print("Make sure:")
             print("- webhook_server.py is running (python webhook_server.py)")
             print("- ngrok tunnel is active (ngrok http 5000)")
@@ -334,9 +334,9 @@ def main():
         success_count = process_all_enrichments(data, ngrok_url)
         
         if success_count == 0:
-            print("\n⚠ No enrichment requests were sent successfully")
+            print("\n[WARNING] No enrichment requests were sent successfully")
         elif not webhook_ok:
-            print(f"\n⚠ WARNING: {success_count} requests sent but webhook may not be working")
+            print(f"\n[WARNING] {success_count} requests sent but webhook may not be working")
             print("You might miss the Apollo responses!")
 
 if __name__ == "__main__":

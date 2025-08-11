@@ -1,0 +1,5 @@
+currenlty working on making usre new contacts have matching email root domai if one exists for that update_close_leads
+
+going to investigate why im only processing 10 update_close_leads
+
+swithc over to 
