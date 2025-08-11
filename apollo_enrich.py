@@ -18,6 +18,100 @@ PUBLIC_DOMAINS = {
 def is_public_domain(d):
     return bool(d) and d.lower() in PUBLIC_DOMAINS
 
+def extract_domain_from_email(email):
+    """Extract domain from email address"""
+    if email and '@' in email:
+        return email.split('@')[1]
+    return None
+
+def validate_domain_match(org, attorney_email):
+    """Validate that the organization domain matches the attorney email domain"""
+    if not attorney_email or attorney_email == 'N/A' or not org.get('primary_domain'):
+        return False
+        
+    attorney_domain = extract_domain_from_email(attorney_email)
+    org_domain = org.get('primary_domain', '').lower()
+    
+    if not attorney_domain or is_public_domain(attorney_domain):
+        return False
+    
+    # Exact domain match
+    if attorney_domain.lower() == org_domain:
+        return True
+    
+    # Check if domains are similar (for abbreviations like rotstein-sh.com vs rotstein-shiffman.com)
+    attorney_root = extract_domain_root(attorney_domain)
+    org_root = extract_domain_root(org_domain)
+    
+    if attorney_root and org_root and len(attorney_root) >= 4 and len(org_root) >= 4:
+        # Check if one domain contains the other or they share significant overlap
+        if attorney_root in org_root or org_root in attorney_root:
+            return True
+        
+        # Check similarity ratio
+        similarity = difflib.SequenceMatcher(None, attorney_root, org_root).ratio()
+        return similarity >= 0.7
+    
+    return False
+
+def calculate_firm_match_score(org, firm_name, attorney_email=None):
+    """Calculate a more strict matching score for law firms"""
+    org_name = org.get("name", "").lower()
+    search_name = firm_name.lower()
+    
+    # Base score from name similarity
+    base_score = difflib.SequenceMatcher(None, org_name, search_name).ratio()
+    
+    # Domain validation bonus
+    domain_bonus = 0
+    if validate_domain_match(org, attorney_email):
+        domain_bonus = 0.3  # Significant bonus for domain match
+    
+    # Legal firm bonus
+    if name_has_legal_hint(org_name):
+        legal_bonus = 0.1
+    else:
+        legal_bonus = -0.2  # Penalty for non-law firms
+    
+    # Geographic penalty for clearly foreign firms
+    geo_penalty = 0
+    domain = org.get('primary_domain', '')
+    if domain.endswith(('.co.uk', '.ie', '.com.au', '.com.br', '.ca')):
+        geo_penalty = -0.2
+    
+    final_score = base_score + domain_bonus + legal_bonus + geo_penalty
+    return max(0, min(1, final_score))  # Clamp between 0 and 1
+
+def prioritize_legal_professionals(people):
+    """
+    Sort and select top 2 legal professionals based on title priority
+    Priority: 1. partner, 2. attorney/lawyer, 3. counsel, 4. paralegal
+    """
+    def get_title_priority(person):
+        title = person.get('title', '').lower()
+        
+        # Partner gets highest priority
+        if 'partner' in title:
+            return 1
+        # Attorney/Lawyer second priority  
+        elif 'attorney' in title or 'lawyer' in title:
+            return 2
+        # Counsel third priority
+        elif 'counsel' in title:
+            return 3
+        # Paralegal lowest priority
+        elif 'paralegal' in title:
+            return 4
+        # Unknown titles get medium priority
+        else:
+            return 2.5
+    
+    # Sort by priority (lower number = higher priority)
+    sorted_people = sorted(people, key=get_title_priority)
+    
+    # Return top 2
+    return sorted_people[:2]
+
 def clean_firm_name(name):
     if not name or name == 'N/A':
         return name
@@ -46,53 +140,36 @@ def get_search_variations(firm_name):
         return []
     variations = []
 
-    # Original and quoted exact
+    # Original and quoted exact - these are the most reliable
     variations += [firm_name, f'"{firm_name}"']
 
-    # Cleaned
+    # Cleaned version (remove legal terms)
     cleaned = clean_firm_name(firm_name)
-    if cleaned and cleaned != firm_name.lower():
+    if cleaned and cleaned != firm_name.lower() and len(cleaned.split()) >= 2:
         variations += [cleaned, f'"{cleaned}"']
 
-    # Remove prefixes/suffixes
+    # Remove prefixes/suffixes but keep core firm name
     core = firm_name
     for prefix in [r'^the\s+law\s+offices?\s+of\s+', r'^law\s+offices?\s+of\s+', r'^the\s+law\s+firm\s+of\s+']:
         core = re.sub(prefix, '', core, flags=re.IGNORECASE)
     core = re.sub(r',?\s*(llp|llc|pc|pllc|ltd|inc|corp|corporation)\.?$', '', core, flags=re.IGNORECASE).strip()
-    if core and core != firm_name:
+    
+    # Only add core variation if it still has multiple words (avoid single names)
+    if core and core != firm_name and len(core.split()) >= 2:
         variations += [core, f'"{core}"']
 
-    # & vs and
-    if '&' in core:
-        variations += [core.replace('&', 'and'), core.replace('&', '')]
-    elif ' and ' in core.lower():
-        variations += [re.sub(r'\s+and\s+', ' & ', core, flags=re.IGNORECASE),
-                       re.sub(r'\s+and\s+', ' ', core, flags=re.IGNORECASE)]
+    # & vs and variations - but only if we still have multiple meaningful words
+    if '&' in core and len(core.split()) >= 2:
+        and_version = core.replace('&', 'and')
+        if len(and_version.split()) >= 2:
+            variations.append(and_version)
+    elif ' and ' in core.lower() and len(core.split()) >= 2:
+        variations.append(re.sub(r'\s+and\s+', ' & ', core, flags=re.IGNORECASE))
 
-    # Helpful normalizations (e.g., "Downtown LA Law")
-    variations.append(re.sub(r'\bLA\b', 'Los Angeles', core, flags=re.IGNORECASE))
-    variations.append(re.sub(r'\s+Group$', '', core, flags=re.IGNORECASE))
-    # DTLA nickname
-    if re.search(r'\bdowntown\s+la\b', core, flags=re.IGNORECASE):
-        variations.append('DTLA Law Group')
-
-    # Extract surnames to try as fallbacks (Rotstein, Shiffman)
-    names = re.findall(r'\b[A-Z][a-z]{3,}\b', core)
-    legal_words = {'Law','Firm','Office','Offices','Group','Attorney','Attorneys','Associates','Legal'}
-    # Don't add single generic words as variations
-    generic_words = {'downtown', 'law', 'group', 'office', 'firm', 'attorneys', 'legal'}
-    for n in names:
-        if n not in legal_words and n.lower() not in generic_words:
-            variations.append(n)
-
-    # Dedup preserving order
-    seen, uniq = set(), []
-    for v in variations:
-        k = v.strip().lower()
-        if k and k not in seen:
-            seen.add(k)
-            uniq.append(v.strip())
-    return uniq
+    # REMOVE THE INDIVIDUAL NAME FALLBACKS - these cause terrible matches
+    # No more single surname searches like "Rice" or "Daniel"
+    
+    return list(set([v for v in variations if v.strip() and len(v.split()) >= 2]))
 
 def is_law_firm(name):
     if not name:
@@ -197,44 +274,44 @@ def name_has_legal_hint(name: str):
     n = (name or "").lower()
     return any(h in n for h in LEGAL_HINTS)
 
-def choose_best_org(lead_firm_name, firm_domain, candidates):
+def choose_best_org(lead_firm_name, firm_domain, candidates, attorney_email=None):
     if not candidates:
         return None, "no_candidates"
     
-    core = normalize_core(lead_firm_name or "")
-    core_tokens = set(core.split())
-    acro = acronym(core)
+    # 1) Filter out clearly non-law firms first
+    law_firms = [c for c in candidates if name_has_legal_hint(c.get("name", ""))]
+    if law_firms:
+        candidates = law_firms
+    
+    # 2) Exact domain match (with email validation)
+    if attorney_email and attorney_email != 'N/A':
+        domain_matches = [c for c in candidates if validate_domain_match(c, attorney_email)]
+        if domain_matches:
+            # Sort by name similarity among domain matches
+            domain_matches.sort(key=lambda c: calculate_firm_match_score(c, lead_firm_name, attorney_email), reverse=True)
+            return domain_matches[0], "exact_domain_match"
 
-    # 1) Exact domain match (non-public)
-    if firm_domain and not is_public_domain(firm_domain):
-        exact = [c for c in candidates if (c.get("primary_domain") or "").lower() == firm_domain.lower()]
-        if exact:
-            exact.sort(key=lambda c: difflib.SequenceMatcher(None, (c.get("name") or "").lower(), core).ratio(), reverse=True)
-            return exact[0], "exact_domain"
-
-    # 2) Score by name similarity + token coverage + hints + domain root
-    dom_root = extract_domain_root(firm_domain) if firm_domain and not is_public_domain(firm_domain) else None
-
-    def score(c):
-        name = (c.get("name") or "").lower()
-        domain = c.get("primary_domain") or ""
-        tokens_in = len(core_tokens & set(name.split()))
-        core_cov = tokens_in / max(1, len(core_tokens))
-        sim = difflib.SequenceMatcher(None, name, core).ratio()
-        bonus = 0.0
-        
-        # Legal firm bonus
-        if name_has_legal_hint(name): bonus += 0.08
-        
-        # Acronym matching bonus
-        if acro and acro in name.replace(' ', ''): bonus += 0.06
-        
-        # Domain matching bonuses (heavily weighted)
-        if dom_root and domain:
-            if dom_root in domain.lower(): bonus += 0.15  # Strong domain match
-            # Check if query tokens appear in domain
-            for token in core_tokens:
-                if len(token) > 2 and token in domain.lower(): bonus += 0.10
+    # 3) Score all candidates with strict criteria
+    scored_candidates = []
+    for c in candidates:
+        score = calculate_firm_match_score(c, lead_firm_name, attorney_email)
+        scored_candidates.append((c, score))
+    
+    # Sort by score
+    scored_candidates.sort(key=lambda x: x[1], reverse=True)
+    
+    if not scored_candidates:
+        return None, "no_valid_candidates"
+    
+    best_candidate, best_score = scored_candidates[0]
+    
+    # Much stricter acceptance criteria
+    if best_score >= 0.75:  # Very high confidence required
+        return best_candidate, f"high_confidence:{best_score:.3f}"
+    elif best_score >= 0.60 and attorney_email and validate_domain_match(best_candidate, attorney_email):
+        return best_candidate, f"domain_validated:{best_score:.3f}"
+    else:
+        return None, f"score_too_low:{best_score:.3f}"
         
         # Bonus for having any real domain vs "no-domain"
         if domain and domain != "no-domain": bonus += 0.05
@@ -320,13 +397,21 @@ def search_people_at_organization(org_id, org_name):
         if not people:
             return []
         
-        print(f"      Unlocking emails for {len(people)} contacts...")
+        # Apply priority filtering to get top 2 candidates
+        top_people = prioritize_legal_professionals(people)
+        print(f"      Selected top {len(top_people)} candidates based on title priority")
+        for person in top_people:
+            title = person.get('title', 'N/A')
+            name = f"{person.get('first_name', '')} {person.get('last_name', '')}".strip()
+            print(f"        - {name} ({title})")
+        
+        print(f"      Unlocking emails for {len(top_people)} contacts...")
         
         # Step 2: Enrich each person to unlock their email
         enrich_url = "https://api.apollo.io/api/v1/people/match"
         enriched_contacts = []
         
-        for i, person in enumerate(people, 1):
+        for i, person in enumerate(top_people, 1):
             # Use person data to enrich and unlock email
             enrich_payload = {
                 "first_name": person.get('first_name'),
@@ -367,7 +452,7 @@ def search_people_at_organization(org_id, org_name):
             except Exception as e:
                 print(f"        [{i:2d}/{len(people)}] ERROR enriching {person.get('first_name')}: {e}")
         
-        print(f"      Successfully unlocked {len(enriched_contacts)}/{len(people)} emails")
+        print(f"      Successfully unlocked {len(enriched_contacts)}/{len(top_people)} emails")
         return enriched_contacts
         
     except requests.exceptions.RequestException as e:
@@ -411,10 +496,13 @@ def search_firm_with_retry(lead_data):
 
     firm_name = lead_data.get('attorney_firm')
     firm_domain = (lead_data.get('firm_domain') or '').lower()
+    attorney_email = lead_data.get('attorney_email')
 
     # Name variations first
     if firm_name and firm_name != 'N/A':
         variations = get_search_variations(firm_name)
+        print(f"    Using {len(variations)} search variations for: {firm_name}")
+        
         for i, variation in enumerate(variations, 1):
             print(f"  Attempt {i}: '{variation}'")
             time.sleep(0.2)
@@ -433,7 +521,7 @@ def search_firm_with_retry(lead_data):
                         input_query=variation,
                         input_domain=None if is_public_domain(firm_domain) else extract_domain_root(firm_domain)
                     )
-                    best, reason = choose_best_org(firm_name, firm_domain, ranked)
+                    best, reason = choose_best_org(firm_name, firm_domain, ranked, attorney_email)
                     if best:
                         safe_name = best.get('name', 'Unknown').encode('ascii', 'ignore').decode('ascii')
                         print(f"    SUCCESS! Selected: {safe_name} ({reason})")
@@ -480,7 +568,7 @@ def search_firm_with_retry(lead_data):
                 
                 if law_firms:
                     ranked = rank_and_dedupe_organizations(law_firms, input_query=domain_root, input_domain=domain_root)
-                    best, reason = choose_best_org(firm_name, firm_domain, ranked)
+                    best, reason = choose_best_org(firm_name, firm_domain, ranked, attorney_email)
                     if best:
                         safe_name = best.get('name', 'Unknown').encode('ascii', 'ignore').decode('ascii')
                         print(f"    SUCCESS! Selected: {safe_name} ({reason})")
@@ -522,7 +610,7 @@ def search_firm_with_retry(lead_data):
             
             if law_firms:
                 ranked = rank_and_dedupe_organizations(law_firms, input_query=firm_name or firm_domain, input_domain=domain_root)
-                best, reason = choose_best_org(firm_name, firm_domain, ranked)
+                best, reason = choose_best_org(firm_name, firm_domain, ranked, attorney_email)
                 if best:
                     safe_name = best.get('name', 'Unknown').encode('ascii', 'ignore').decode('ascii')
                     print(f"    SUCCESS! Selected: {safe_name} ({reason})")

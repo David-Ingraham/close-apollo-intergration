@@ -480,3 +480,993 @@
   }
 }
 ==================================================
+{
+  "timestamp": "2025-08-10T19:53:53.684908",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "data": {
+    "person": {
+      "id": "test_123",
+      "email": "[email protected]",
+      "phone_numbers": [
+        {
+          "raw_number": "+1234567890",
+          "sanitized_phone": "+11234567890",
+          "type": "mobile"
+        },
+        {
+          "raw_number": "+1987654321",
+          "sanitized_phone": "+11987654321",
+          "type": "work"
+        }
+      ],
+      "first_name": "Test",
+      "last_name": "Person"
+    }
+  }
+}
+==================================================
+{
+  "timestamp": "2025-08-10T19:55:34.697899",
+  "headers": {
+    "Host": "d91474c53b23.ngrok-free.app",
+    "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+    "Content-Length": "204",
+    "Accept": "*/*",
+    "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+    "Accept-Encoding": "gzip,deflate,identity",
+    "Accept-Language": "en-us,en;q=0.5",
+    "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+    "Content-Type": "application/json",
+    "Sentry-Trace": "f2ca8aa13ffb482690e083828c14fa11-eab8fdab064c4d40",
+    "Traceparent": "00-7304dfe3895232ae83beb58b5ac16248-47711cc10154279f-01",
+    "X-Forwarded-For": "34.123.121.231",
+    "X-Forwarded-Host": "d91474c53b23.ngrok-free.app",
+    "X-Forwarded-Proto": "https"
+  },
+  "data": {
+    "status": "success",
+    "total_requested_enrichments": 1,
+    "unique_enriched_records": 0,
+    "missing_records": 0,
+    "credits_consumed": 0,
+    "people": [
+      {
+        "id": "54a2ae9c74686930c21d4b35",
+        "status": "failure",
+        "phone_numbers": []
+      }
+    ]
+  }
+}
+==================================================
+{
+  "timestamp": "2025-08-10T19:55:34.730102",
+  "headers": {
+    "Host": "d91474c53b23.ngrok-free.app",
+    "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+    "Content-Length": "204",
+    "Accept": "*/*",
+    "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+    "Accept-Encoding": "gzip,deflate,identity",
+    "Accept-Language": "en-us,en;q=0.5",
+    "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+    "Content-Type": "application/json",
+    "Sentry-Trace": "f2ca8aa13ffb482690e083828c14fa11-9cf1f95746f442f8",
+    "Traceparent": "00-d2f6b9b6a81508b610a5347a57ac0db6-c4b02d45e38aa985-01",
+    "X-Forwarded-For": "104.198.21.35",
+    "X-Forwarded-Host": "d91474c53b23.ngrok-free.app",
+    "X-Forwarded-Proto": "https"
+  },
+  "data": {
+    "status": "success",
+    "total_requested_enrichments": 1,
+    "unique_enriched_records": 0,
+    "missing_records": 0,
+    "credits_consumed": 0,
+    "people": [
+      {
+        "id": "54a2b1fe74686935be52cf35",
+        "status": "failure",
+        "phone_numbers": []
+      }
+    ]
+  }
+}
+==================================================
+{
+  "timestamp": "2025-08-10T19:55:34.731158",
+  "headers": {
+    "Host": "d91474c53b23.ngrok-free.app",
+    "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+    "Content-Length": "204",
+    "Accept": "*/*",
+    "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+    "Accept-Encoding": "gzip,deflate,identity",
+    "Accept-Language": "en-us,en;q=0.5",
+    "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+    "Content-Type": "application/json",
+    "Sentry-Trace": "f2ca8aa13ffb482690e083828c14fa11-70755a69a6bd4121",
+    "Traceparent": "00-936697fff94ddf746468eaa59fb0c0fa-d3dd098709dd0f8e-01",
+    "X-Forwarded-For": "34.123.125.78",
+    "X-Forwarded-Host": "d91474c53b23.ngrok-free.app",
+    "X-Forwarded-Proto": "https"
+  },
+  "data": {
+    "status": "success",
+    "total_requested_enrichments": 1,
+    "unique_enriched_records": 0,
+    "missing_records": 0,
+    "credits_consumed": 0,
+    "people": [
+      {
+        "id": "54a4243e7468692abfb0742f",
+        "status": "failure",
+        "phone_numbers": []
+      }
+    ]
+  }
+}
+==================================================
+{
+  "timestamp": "2025-08-10T19:55:34.732991",
+  "headers": {
+    "Host": "d91474c53b23.ngrok-free.app",
+    "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+    "Content-Length": "204",
+    "Accept": "*/*",
+    "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+    "Accept-Encoding": "gzip,deflate,identity",
+    "Accept-Language": "en-us,en;q=0.5",
+    "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+    "Content-Type": "application/json",
+    "Sentry-Trace": "f2ca8aa13ffb482690e083828c14fa11-a1b6137b5bb447d5",
+    "Traceparent": "00-e07b382ed5aea680712e70dc23f44d0b-85c27e170b9562e5-01",
+    "X-Forwarded-For": "34.123.121.231",
+    "X-Forwarded-Host": "d91474c53b23.ngrok-free.app",
+    "X-Forwarded-Proto": "https"
+  },
+  "data": {
+    "status": "success",
+    "total_requested_enrichments": 1,
+    "unique_enriched_records": 0,
+    "missing_records": 0,
+    "credits_consumed": 0,
+    "people": [
+      {
+        "id": "624d80c86d3e5b0001b1998a",
+        "status": "failure",
+        "phone_numbers": []
+      }
+    ]
+  }
+}
+==================================================
+{
+  "timestamp": "2025-08-10T19:55:34.833214",
+  "headers": {
+    "Host": "d91474c53b23.ngrok-free.app",
+    "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+    "Content-Length": "508",
+    "Accept": "*/*",
+    "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+    "Accept-Encoding": "gzip,deflate,identity",
+    "Accept-Language": "en-us,en;q=0.5",
+    "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+    "Content-Type": "application/json",
+    "Sentry-Trace": "f2ca8aa13ffb482690e083828c14fa11-46a0a255f5394ed0",
+    "Traceparent": "00-6b6cc062af89a0e849eefb4f2505e3ad-a103c29309798b63-01",
+    "X-Forwarded-For": "34.136.123.151",
+    "X-Forwarded-Host": "d91474c53b23.ngrok-free.app",
+    "X-Forwarded-Proto": "https"
+  },
+  "data": {
+    "status": "success",
+    "total_requested_enrichments": 1,
+    "unique_enriched_records": 1,
+    "missing_records": 0,
+    "credits_consumed": 5,
+    "people": [
+      {
+        "id": "557142297369640d70a90100",
+        "status": "success",
+        "phone_numbers": [
+          {
+            "_id": "6899311e0c181500017ea612",
+            "confidence_cd": "high",
+            "dnc_other_info": null,
+            "dnc_status_cd": null,
+            "dnc_status_updated_at": null,
+            "raw_number": "+1 304-285-2510",
+            "sanitized_number": "+13042852510",
+            "status_cd": "valid_number",
+            "type_cd": "other",
+            "id": "6899311e0c181500017ea612",
+            "key": "6899311e0c181500017ea612"
+          }
+        ]
+      }
+    ]
+  }
+}
+==================================================
+{
+  "timestamp": "2025-08-10T19:55:34.849117",
+  "headers": {
+    "Host": "d91474c53b23.ngrok-free.app",
+    "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+    "Content-Length": "508",
+    "Accept": "*/*",
+    "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+    "Accept-Encoding": "gzip,deflate,identity",
+    "Accept-Language": "en-us,en;q=0.5",
+    "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+    "Content-Type": "application/json",
+    "Sentry-Trace": "f2ca8aa13ffb482690e083828c14fa11-0b9ae533755b43e3",
+    "Traceparent": "00-0113341fd34cf6ee29be4ada406f437a-7adbd38f20286d12-01",
+    "X-Forwarded-For": "34.135.2.155",
+    "X-Forwarded-Host": "d91474c53b23.ngrok-free.app",
+    "X-Forwarded-Proto": "https"
+  },
+  "data": {
+    "status": "success",
+    "total_requested_enrichments": 1,
+    "unique_enriched_records": 1,
+    "missing_records": 0,
+    "credits_consumed": 5,
+    "people": [
+      {
+        "id": "54a4ed4074686938ac0ac26e",
+        "status": "success",
+        "phone_numbers": [
+          {
+            "_id": "6865a4462d30f80001e063b1",
+            "confidence_cd": "high",
+            "dnc_other_info": null,
+            "dnc_status_cd": null,
+            "dnc_status_updated_at": null,
+            "raw_number": "+1 786-476-3508",
+            "sanitized_number": "+17864763508",
+            "status_cd": "valid_number",
+            "type_cd": "other",
+            "id": "6865a4462d30f80001e063b1",
+            "key": "6865a4462d30f80001e063b1"
+          }
+        ]
+      }
+    ]
+  }
+}
+==================================================
+{
+  "timestamp": "2025-08-10T19:55:34.902552",
+  "headers": {
+    "Host": "d91474c53b23.ngrok-free.app",
+    "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+    "Content-Length": "512",
+    "Accept": "*/*",
+    "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+    "Accept-Encoding": "gzip,deflate,identity",
+    "Accept-Language": "en-us,en;q=0.5",
+    "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+    "Content-Type": "application/json",
+    "Sentry-Trace": "f2ca8aa13ffb482690e083828c14fa11-d84f08eb3fe148bd",
+    "Traceparent": "00-138cc73af7f21531f506a66f511204f9-0adc748b832e787c-01",
+    "X-Forwarded-For": "34.28.121.126",
+    "X-Forwarded-Host": "d91474c53b23.ngrok-free.app",
+    "X-Forwarded-Proto": "https"
+  },
+  "data": {
+    "status": "success",
+    "total_requested_enrichments": 1,
+    "unique_enriched_records": 1,
+    "missing_records": 0,
+    "credits_consumed": 5,
+    "people": [
+      {
+        "id": "54a2e95b74686930c23f9046",
+        "status": "success",
+        "phone_numbers": [
+          {
+            "_id": "687fee716177a20001fd6661",
+            "confidence_cd": "high",
+            "dnc_other_info": null,
+            "dnc_status_cd": null,
+            "dnc_status_updated_at": null,
+            "raw_number": "+55 21 99903-0498",
+            "sanitized_number": "+5521999030498",
+            "status_cd": "valid_number",
+            "type_cd": "other",
+            "id": "687fee716177a20001fd6661",
+            "key": "687fee716177a20001fd6661"
+          }
+        ]
+      }
+    ]
+  }
+}
+==================================================
+{
+  "timestamp": "2025-08-10T19:55:34.925322",
+  "headers": {
+    "Host": "d91474c53b23.ngrok-free.app",
+    "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+    "Content-Length": "509",
+    "Accept": "*/*",
+    "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+    "Accept-Encoding": "gzip,deflate,identity",
+    "Accept-Language": "en-us,en;q=0.5",
+    "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+    "Content-Type": "application/json",
+    "Sentry-Trace": "f2ca8aa13ffb482690e083828c14fa11-153d6d56ba1f44e3",
+    "Traceparent": "00-ccd022f8afdd3a645c95e01d20b7c548-176f28ec79b117fe-01",
+    "X-Forwarded-For": "34.135.2.155",
+    "X-Forwarded-Host": "d91474c53b23.ngrok-free.app",
+    "X-Forwarded-Proto": "https"
+  },
+  "data": {
+    "status": "success",
+    "total_requested_enrichments": 1,
+    "unique_enriched_records": 1,
+    "missing_records": 0,
+    "credits_consumed": 5,
+    "people": [
+      {
+        "id": "57dc179fa6da9868b3a25e02",
+        "status": "success",
+        "phone_numbers": [
+          {
+            "_id": "6899311c0c181500017ea610",
+            "confidence_cd": "high",
+            "dnc_other_info": null,
+            "dnc_status_cd": null,
+            "dnc_status_updated_at": null,
+            "raw_number": "+1 562-606-1529",
+            "sanitized_number": "+15626061529",
+            "status_cd": "valid_number",
+            "type_cd": "mobile",
+            "id": "6899311c0c181500017ea610",
+            "key": "6899311c0c181500017ea610"
+          }
+        ]
+      }
+    ]
+  }
+}
+==================================================
+{
+  "timestamp": "2025-08-10T19:55:35.094438",
+  "headers": {
+    "Host": "d91474c53b23.ngrok-free.app",
+    "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+    "Content-Length": "508",
+    "Accept": "*/*",
+    "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+    "Accept-Encoding": "gzip,deflate,identity",
+    "Accept-Language": "en-us,en;q=0.5",
+    "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+    "Content-Type": "application/json",
+    "Sentry-Trace": "f2ca8aa13ffb482690e083828c14fa11-09daa74f249a43d1",
+    "Traceparent": "00-f943164e8ec9abf368db0cd9b933fc5e-73db926c6c814be6-01",
+    "X-Forwarded-For": "104.198.21.35",
+    "X-Forwarded-Host": "d91474c53b23.ngrok-free.app",
+    "X-Forwarded-Proto": "https"
+  },
+  "data": {
+    "status": "success",
+    "total_requested_enrichments": 1,
+    "unique_enriched_records": 1,
+    "missing_records": 0,
+    "credits_consumed": 5,
+    "people": [
+      {
+        "id": "57da3be1a6da984a6c6a3433",
+        "status": "success",
+        "phone_numbers": [
+          {
+            "_id": "68700aa1b634d000018f549e",
+            "confidence_cd": "high",
+            "dnc_other_info": null,
+            "dnc_status_cd": null,
+            "dnc_status_updated_at": null,
+            "raw_number": "+1 304-264-4214",
+            "sanitized_number": "+13042644214",
+            "status_cd": "valid_number",
+            "type_cd": "other",
+            "id": "68700aa1b634d000018f549e",
+            "key": "68700aa1b634d000018f549e"
+          }
+        ]
+      }
+    ]
+  }
+}
+==================================================
+{
+  "timestamp": "2025-08-10T19:59:23.254660",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "data": {
+    "person": {
+      "id": "test_123",
+      "email": "[email protected]",
+      "phone_numbers": [
+        {
+          "raw_number": "+1234567890",
+          "sanitized_phone": "+11234567890",
+          "type": "mobile"
+        },
+        {
+          "raw_number": "+1987654321",
+          "sanitized_phone": "+11987654321",
+          "type": "work"
+        }
+      ],
+      "first_name": "Test",
+      "last_name": "Person"
+    }
+  }
+}
+==================================================
+{
+  "timestamp": "2025-08-10T20:00:39.457281",
+  "headers": {
+    "Host": "d91474c53b23.ngrok-free.app",
+    "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+    "Content-Length": "204",
+    "Accept": "*/*",
+    "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+    "Accept-Encoding": "gzip,deflate,identity",
+    "Accept-Language": "en-us,en;q=0.5",
+    "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+    "Content-Type": "application/json",
+    "Sentry-Trace": "ada8f9f8bcef4be2be74bab897cd8385-b8de61c9a9734d99",
+    "Traceparent": "00-552751c1057c25cc2f673dbee67b1bd4-fe975f6005753fd8-01",
+    "X-Forwarded-For": "34.132.25.51",
+    "X-Forwarded-Host": "d91474c53b23.ngrok-free.app",
+    "X-Forwarded-Proto": "https"
+  },
+  "data": {
+    "status": "success",
+    "total_requested_enrichments": 1,
+    "unique_enriched_records": 0,
+    "missing_records": 0,
+    "credits_consumed": 0,
+    "people": [
+      {
+        "id": "54a2b1fe74686935be52cf35",
+        "status": "failure",
+        "phone_numbers": []
+      }
+    ]
+  }
+}
+==================================================
+{
+  "timestamp": "2025-08-10T20:00:39.650984",
+  "headers": {
+    "Host": "d91474c53b23.ngrok-free.app",
+    "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+    "Content-Length": "204",
+    "Accept": "*/*",
+    "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+    "Accept-Encoding": "gzip,deflate,identity",
+    "Accept-Language": "en-us,en;q=0.5",
+    "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+    "Content-Type": "application/json",
+    "Sentry-Trace": "ada8f9f8bcef4be2be74bab897cd8385-f88a3ec0187a4ff0",
+    "Traceparent": "00-06369e149e1b73a819c07f3809bcbc1b-52279796fcca0f2f-01",
+    "X-Forwarded-For": "104.198.21.35",
+    "X-Forwarded-Host": "d91474c53b23.ngrok-free.app",
+    "X-Forwarded-Proto": "https"
+  },
+  "data": {
+    "status": "success",
+    "total_requested_enrichments": 1,
+    "unique_enriched_records": 0,
+    "missing_records": 0,
+    "credits_consumed": 0,
+    "people": [
+      {
+        "id": "54a2ae9c74686930c21d4b35",
+        "status": "failure",
+        "phone_numbers": []
+      }
+    ]
+  }
+}
+==================================================
+{
+  "timestamp": "2025-08-10T20:00:39.671181",
+  "headers": {
+    "Host": "d91474c53b23.ngrok-free.app",
+    "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+    "Content-Length": "204",
+    "Accept": "*/*",
+    "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+    "Accept-Encoding": "gzip,deflate,identity",
+    "Accept-Language": "en-us,en;q=0.5",
+    "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+    "Content-Type": "application/json",
+    "Sentry-Trace": "ada8f9f8bcef4be2be74bab897cd8385-97d699bc9d884bb8",
+    "Traceparent": "00-131dedd40ec3e5305b8d08ef4813a632-3f2194879186ca7e-01",
+    "X-Forwarded-For": "34.123.125.78",
+    "X-Forwarded-Host": "d91474c53b23.ngrok-free.app",
+    "X-Forwarded-Proto": "https"
+  },
+  "data": {
+    "status": "success",
+    "total_requested_enrichments": 1,
+    "unique_enriched_records": 0,
+    "missing_records": 0,
+    "credits_consumed": 0,
+    "people": [
+      {
+        "id": "54a4243e7468692abfb0742f",
+        "status": "failure",
+        "phone_numbers": []
+      }
+    ]
+  }
+}
+==================================================
+{
+  "timestamp": "2025-08-10T20:00:39.682537",
+  "headers": {
+    "Host": "d91474c53b23.ngrok-free.app",
+    "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+    "Content-Length": "204",
+    "Accept": "*/*",
+    "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+    "Accept-Encoding": "gzip,deflate,identity",
+    "Accept-Language": "en-us,en;q=0.5",
+    "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+    "Content-Type": "application/json",
+    "Sentry-Trace": "ada8f9f8bcef4be2be74bab897cd8385-48f2db75cff74938",
+    "Traceparent": "00-2e3609a24d9c6446ab5ead6c1572aacf-d239d5d1de594eae-01",
+    "X-Forwarded-For": "34.132.25.51",
+    "X-Forwarded-Host": "d91474c53b23.ngrok-free.app",
+    "X-Forwarded-Proto": "https"
+  },
+  "data": {
+    "status": "success",
+    "total_requested_enrichments": 1,
+    "unique_enriched_records": 0,
+    "missing_records": 0,
+    "credits_consumed": 0,
+    "people": [
+      {
+        "id": "624d80c86d3e5b0001b1998a",
+        "status": "failure",
+        "phone_numbers": []
+      }
+    ]
+  }
+}
+==================================================
+{
+  "timestamp": "2025-08-10T20:00:39.749224",
+  "headers": {
+    "Host": "d91474c53b23.ngrok-free.app",
+    "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+    "Content-Length": "509",
+    "Accept": "*/*",
+    "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+    "Accept-Encoding": "gzip,deflate,identity",
+    "Accept-Language": "en-us,en;q=0.5",
+    "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+    "Content-Type": "application/json",
+    "Sentry-Trace": "ada8f9f8bcef4be2be74bab897cd8385-a38d8eb9cbf449e0",
+    "Traceparent": "00-39cc444a3f9d0c88e851631230799c59-cf23255bdbcdf694-01",
+    "X-Forwarded-For": "34.173.0.227",
+    "X-Forwarded-Host": "d91474c53b23.ngrok-free.app",
+    "X-Forwarded-Proto": "https"
+  },
+  "data": {
+    "status": "success",
+    "total_requested_enrichments": 1,
+    "unique_enriched_records": 1,
+    "missing_records": 0,
+    "credits_consumed": 5,
+    "people": [
+      {
+        "id": "57dc179fa6da9868b3a25e02",
+        "status": "success",
+        "phone_numbers": [
+          {
+            "_id": "6899311c0c181500017ea610",
+            "confidence_cd": "high",
+            "dnc_other_info": null,
+            "dnc_status_cd": null,
+            "dnc_status_updated_at": null,
+            "raw_number": "+1 562-606-1529",
+            "sanitized_number": "+15626061529",
+            "status_cd": "valid_number",
+            "type_cd": "mobile",
+            "id": "6899311c0c181500017ea610",
+            "key": "6899311c0c181500017ea610"
+          }
+        ]
+      }
+    ]
+  }
+}
+==================================================
+{
+  "timestamp": "2025-08-10T20:00:39.779774",
+  "headers": {
+    "Host": "d91474c53b23.ngrok-free.app",
+    "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+    "Content-Length": "508",
+    "Accept": "*/*",
+    "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+    "Accept-Encoding": "gzip,deflate,identity",
+    "Accept-Language": "en-us,en;q=0.5",
+    "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+    "Content-Type": "application/json",
+    "Sentry-Trace": "ada8f9f8bcef4be2be74bab897cd8385-d044c55f1da34914",
+    "Traceparent": "00-165fb3293037d38c020dc4321feaad4e-3f700e4564c5c31b-01",
+    "X-Forwarded-For": "104.198.21.35",
+    "X-Forwarded-Host": "d91474c53b23.ngrok-free.app",
+    "X-Forwarded-Proto": "https"
+  },
+  "data": {
+    "status": "success",
+    "total_requested_enrichments": 1,
+    "unique_enriched_records": 1,
+    "missing_records": 0,
+    "credits_consumed": 5,
+    "people": [
+      {
+        "id": "54a4ed4074686938ac0ac26e",
+        "status": "success",
+        "phone_numbers": [
+          {
+            "_id": "6865a4462d30f80001e063b1",
+            "confidence_cd": "high",
+            "dnc_other_info": null,
+            "dnc_status_cd": null,
+            "dnc_status_updated_at": null,
+            "raw_number": "+1 786-476-3508",
+            "sanitized_number": "+17864763508",
+            "status_cd": "valid_number",
+            "type_cd": "other",
+            "id": "6865a4462d30f80001e063b1",
+            "key": "6865a4462d30f80001e063b1"
+          }
+        ]
+      }
+    ]
+  }
+}
+==================================================
+{
+  "timestamp": "2025-08-10T20:00:39.796969",
+  "headers": {
+    "Host": "d91474c53b23.ngrok-free.app",
+    "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+    "Content-Length": "508",
+    "Accept": "*/*",
+    "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+    "Accept-Encoding": "gzip,deflate,identity",
+    "Accept-Language": "en-us,en;q=0.5",
+    "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+    "Content-Type": "application/json",
+    "Sentry-Trace": "ada8f9f8bcef4be2be74bab897cd8385-ecbf672ca86b4c52",
+    "Traceparent": "00-88ecc82315172a6eaa4adf38e31ad633-43bdf18371265794-01",
+    "X-Forwarded-For": "34.136.123.151",
+    "X-Forwarded-Host": "d91474c53b23.ngrok-free.app",
+    "X-Forwarded-Proto": "https"
+  },
+  "data": {
+    "status": "success",
+    "total_requested_enrichments": 1,
+    "unique_enriched_records": 1,
+    "missing_records": 0,
+    "credits_consumed": 5,
+    "people": [
+      {
+        "id": "557142297369640d70a90100",
+        "status": "success",
+        "phone_numbers": [
+          {
+            "_id": "6899311e0c181500017ea612",
+            "confidence_cd": "high",
+            "dnc_other_info": null,
+            "dnc_status_cd": null,
+            "dnc_status_updated_at": null,
+            "raw_number": "+1 304-285-2510",
+            "sanitized_number": "+13042852510",
+            "status_cd": "valid_number",
+            "type_cd": "other",
+            "id": "6899311e0c181500017ea612",
+            "key": "6899311e0c181500017ea612"
+          }
+        ]
+      }
+    ]
+  }
+}
+==================================================
+{
+  "timestamp": "2025-08-10T20:00:39.799760",
+  "headers": {
+    "Host": "d91474c53b23.ngrok-free.app",
+    "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+    "Content-Length": "508",
+    "Accept": "*/*",
+    "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+    "Accept-Encoding": "gzip,deflate,identity",
+    "Accept-Language": "en-us,en;q=0.5",
+    "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+    "Content-Type": "application/json",
+    "Sentry-Trace": "ada8f9f8bcef4be2be74bab897cd8385-385c843b11f3449d",
+    "Traceparent": "00-e1ab5a490d59c98ba8b3698e9434bb24-921adb4a84b510a4-01",
+    "X-Forwarded-For": "34.28.97.242",
+    "X-Forwarded-Host": "d91474c53b23.ngrok-free.app",
+    "X-Forwarded-Proto": "https"
+  },
+  "data": {
+    "status": "success",
+    "total_requested_enrichments": 1,
+    "unique_enriched_records": 1,
+    "missing_records": 0,
+    "credits_consumed": 5,
+    "people": [
+      {
+        "id": "57da3be1a6da984a6c6a3433",
+        "status": "success",
+        "phone_numbers": [
+          {
+            "_id": "68700aa1b634d000018f549e",
+            "confidence_cd": "high",
+            "dnc_other_info": null,
+            "dnc_status_cd": null,
+            "dnc_status_updated_at": null,
+            "raw_number": "+1 304-264-4214",
+            "sanitized_number": "+13042644214",
+            "status_cd": "valid_number",
+            "type_cd": "other",
+            "id": "68700aa1b634d000018f549e",
+            "key": "68700aa1b634d000018f549e"
+          }
+        ]
+      }
+    ]
+  }
+}
+==================================================
+{
+  "timestamp": "2025-08-10T20:00:40.291980",
+  "headers": {
+    "Host": "d91474c53b23.ngrok-free.app",
+    "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+    "Content-Length": "512",
+    "Accept": "*/*",
+    "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+    "Accept-Encoding": "gzip,deflate,identity",
+    "Accept-Language": "en-us,en;q=0.5",
+    "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+    "Content-Type": "application/json",
+    "Sentry-Trace": "ada8f9f8bcef4be2be74bab897cd8385-e1b67f94dab74dab",
+    "Traceparent": "00-03862b9c9e657e1a037eab8bd51a6ad4-7c398a7e912a64a9-01",
+    "X-Forwarded-For": "35.223.209.228",
+    "X-Forwarded-Host": "d91474c53b23.ngrok-free.app",
+    "X-Forwarded-Proto": "https"
+  },
+  "data": {
+    "status": "success",
+    "total_requested_enrichments": 1,
+    "unique_enriched_records": 1,
+    "missing_records": 0,
+    "credits_consumed": 5,
+    "people": [
+      {
+        "id": "54a2e95b74686930c23f9046",
+        "status": "success",
+        "phone_numbers": [
+          {
+            "_id": "687fee716177a20001fd6661",
+            "confidence_cd": "high",
+            "dnc_other_info": null,
+            "dnc_status_cd": null,
+            "dnc_status_updated_at": null,
+            "raw_number": "+55 21 99903-0498",
+            "sanitized_number": "+5521999030498",
+            "status_cd": "valid_number",
+            "type_cd": "other",
+            "id": "687fee716177a20001fd6661",
+            "key": "687fee716177a20001fd6661"
+          }
+        ]
+      }
+    ]
+  }
+}
+==================================================
+{
+  "timestamp": "2025-08-10T20:28:11.535255",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "data": {
+    "person": {
+      "id": "test_123",
+      "email": "[email protected]",
+      "phone_numbers": [
+        {
+          "raw_number": "+1234567890",
+          "sanitized_phone": "+11234567890",
+          "type": "mobile"
+        },
+        {
+          "raw_number": "+1987654321",
+          "sanitized_phone": "+11987654321",
+          "type": "work"
+        }
+      ],
+      "first_name": "Test",
+      "last_name": "Person"
+    }
+  }
+}
+==================================================
+{
+  "timestamp": "2025-08-10T20:30:40.638551",
+  "headers": {
+    "Host": "d91474c53b23.ngrok-free.app",
+    "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+    "Content-Length": "509",
+    "Accept": "*/*",
+    "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+    "Accept-Encoding": "gzip,deflate,identity",
+    "Accept-Language": "en-us,en;q=0.5",
+    "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+    "Content-Type": "application/json",
+    "Sentry-Trace": "26eba9a21c964b34ad5466fb9a1b41e7-7e7a402286f24103",
+    "Traceparent": "00-0edea41708d1c0e9043113332abb60d2-071cbe31d65a11cf-01",
+    "X-Forwarded-For": "34.28.160.89",
+    "X-Forwarded-Host": "d91474c53b23.ngrok-free.app",
+    "X-Forwarded-Proto": "https"
+  },
+  "data": {
+    "status": "success",
+    "total_requested_enrichments": 1,
+    "unique_enriched_records": 1,
+    "missing_records": 0,
+    "credits_consumed": 5,
+    "people": [
+      {
+        "id": "5e7464ec9e53a90001fba826",
+        "status": "success",
+        "phone_numbers": [
+          {
+            "_id": "6899391c0c181500017ea6e2",
+            "confidence_cd": "high",
+            "dnc_other_info": null,
+            "dnc_status_cd": null,
+            "dnc_status_updated_at": null,
+            "raw_number": "+1 712-251-3365",
+            "sanitized_number": "+17122513365",
+            "status_cd": "valid_number",
+            "type_cd": "mobile",
+            "id": "6899391c0c181500017ea6e2",
+            "key": "6899391c0c181500017ea6e2"
+          }
+        ]
+      }
+    ]
+  }
+}
+==================================================
+{
+  "timestamp": "2025-08-10T20:30:40.677236",
+  "headers": {
+    "Host": "d91474c53b23.ngrok-free.app",
+    "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+    "Content-Length": "814",
+    "Accept": "*/*",
+    "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+    "Accept-Encoding": "gzip,deflate,identity",
+    "Accept-Language": "en-us,en;q=0.5",
+    "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+    "Content-Type": "application/json",
+    "Sentry-Trace": "26eba9a21c964b34ad5466fb9a1b41e7-6c6400367fa349d9",
+    "Traceparent": "00-07daab406c3039be86caab6b475b7ca4-98ee05e2926841e6-01",
+    "X-Forwarded-For": "34.42.47.231",
+    "X-Forwarded-Host": "d91474c53b23.ngrok-free.app",
+    "X-Forwarded-Proto": "https"
+  },
+  "data": {
+    "status": "success",
+    "total_requested_enrichments": 1,
+    "unique_enriched_records": 1,
+    "missing_records": 0,
+    "credits_consumed": 5,
+    "people": [
+      {
+        "id": "54a2080a74686933188d9806",
+        "status": "success",
+        "phone_numbers": [
+          {
+            "_id": "6899391e0c181500017ea6e3",
+            "confidence_cd": "high",
+            "dnc_other_info": null,
+            "dnc_status_cd": null,
+            "dnc_status_updated_at": null,
+            "raw_number": "+1 248-770-8743",
+            "sanitized_number": "+12487708743",
+            "status_cd": "valid_number",
+            "type_cd": "other",
+            "id": "6899391e0c181500017ea6e3",
+            "key": "6899391e0c181500017ea6e3"
+          },
+          {
+            "_id": "6899391e0c181500017ea6e4",
+            "confidence_cd": "high",
+            "dnc_other_info": null,
+            "dnc_status_cd": null,
+            "dnc_status_updated_at": null,
+            "raw_number": "+1 248-254-4908",
+            "sanitized_number": "+12482544908",
+            "status_cd": "valid_number",
+            "type_cd": "mobile",
+            "id": "6899391e0c181500017ea6e4",
+            "key": "6899391e0c181500017ea6e4"
+          }
+        ]
+      }
+    ]
+  }
+}
+==================================================
+{
+  "timestamp": "2025-08-10T20:30:40.790792",
+  "headers": {
+    "Host": "d91474c53b23.ngrok-free.app",
+    "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+    "Content-Length": "508",
+    "Accept": "*/*",
+    "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+    "Accept-Encoding": "gzip,deflate,identity",
+    "Accept-Language": "en-us,en;q=0.5",
+    "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+    "Content-Type": "application/json",
+    "Sentry-Trace": "26eba9a21c964b34ad5466fb9a1b41e7-783408c9faea4b93",
+    "Traceparent": "00-0d580e5e27a85de20e490759b1dd2397-1aaa9bd741d1be46-01",
+    "X-Forwarded-For": "35.202.76.37",
+    "X-Forwarded-Host": "d91474c53b23.ngrok-free.app",
+    "X-Forwarded-Proto": "https"
+  },
+  "data": {
+    "status": "success",
+    "total_requested_enrichments": 1,
+    "unique_enriched_records": 1,
+    "missing_records": 0,
+    "credits_consumed": 5,
+    "people": [
+      {
+        "id": "55e2bbe3f3e5bb5c600033fa",
+        "status": "success",
+        "phone_numbers": [
+          {
+            "_id": "6899391f0c181500017ea6e5",
+            "confidence_cd": "high",
+            "dnc_other_info": null,
+            "dnc_status_cd": null,
+            "dnc_status_updated_at": null,
+            "raw_number": "+1 616-308-9087",
+            "sanitized_number": "+16163089087",
+            "status_cd": "valid_number",
+            "type_cd": "other",
+            "id": "6899391f0c181500017ea6e5",
+            "key": "6899391f0c181500017ea6e5"
+          }
+        ]
+      }
+    ]
+  }
+}
+==================================================

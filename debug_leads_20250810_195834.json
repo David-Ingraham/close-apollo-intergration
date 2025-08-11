@@ -1,43 +1,19 @@
 {
-  "timestamp": "unknown",
+  "timestamp": "2025-08-10T19:58:35.728320",
   "total_leads": 10,
   "leads_needing_enrichment": 10,
   "leads": [
     {
-      "lead_id": "lead_RPRMS1Bfq1WGrRExYrFCf0Z3req02T7Zt3qaCtu29aP",
-      "client_name": "Randall Kuikstra",
-      "client_email": "rkuikstra39@gmail.com",
-      "attorney_firm": "David Tirella",
-      "attorney_email": "dtirella@mckeenassociates.com",
-      "firm_domain": "mckeenassociates.com",
+      "lead_id": "lead_hAB1GNJKqR7Fgkqk2m32PvLvJ2UpSZRJ0S5Jj4je0D5",
+      "client_name": "Jamison Sheats",
+      "client_email": "jamisonjccleveland@gmail.com",
+      "attorney_firm": "Jimmy Rice",
+      "attorney_email": "N/A",
+      "firm_domain": null,
       "search_strategy": "firm_name",
       "needs_apollo_enrichment": true,
       "skip_reason": null,
-      "total_contacts": 5
-    },
-    {
-      "lead_id": "lead_AvQgfYaK12uK8hePivascBDOLBuAUim40YvQFymgid5",
-      "client_name": "Kaelyn Williams",
-      "client_email": "kewilliams12345@gmail.com",
-      "attorney_firm": "Daniel Szieber.",
-      "attorney_email": "savannah@malloy-law.com",
-      "firm_domain": "malloy-law.com",
-      "search_strategy": "firm_name",
-      "needs_apollo_enrichment": true,
-      "skip_reason": null,
-      "total_contacts": 4
-    },
-    {
-      "lead_id": "lead_mLLn2fh9kzR7YEZRm8f5s1aATa9FGG1EsYjcOTL0UuE",
-      "client_name": "Jeramie Lyons",
-      "client_email": "jeramielyons@gmail.com",
-      "attorney_firm": "Angels Reyes",
-      "attorney_email": "jeramielyons@gmail.com",
-      "firm_domain": "gmail.com",
-      "search_strategy": "firm_name",
-      "needs_apollo_enrichment": true,
-      "skip_reason": null,
-      "total_contacts": 4
+      "total_contacts": 3
     },
     {
       "lead_id": "lead_C6rLep53bD6vJRJ13XRkoN4BdiK79f5RUrYNbAMfWkj",
@@ -52,12 +28,24 @@
       "total_contacts": 4
     },
     {
-      "lead_id": "lead_hAB1GNJKqR7Fgkqk2m32PvLvJ2UpSZRJ0S5Jj4je0D5",
-      "client_name": "Jamison Sheats",
-      "client_email": "jamisonjccleveland@gmail.com",
-      "attorney_firm": "Jimmy Rice",
-      "attorney_email": "N/A",
-      "firm_domain": null,
+      "lead_id": "lead_AvQgfYaK12uK8hePivascBDOLBuAUim40YvQFymgid5",
+      "client_name": "Kaelyn Williams",
+      "client_email": "kewilliams12345@gmail.com",
+      "attorney_firm": "Daniel Szieber.",
+      "attorney_email": "savannah@malloy-law.com",
+      "firm_domain": "malloy-law.com",
+      "search_strategy": "firm_name",
+      "needs_apollo_enrichment": true,
+      "skip_reason": null,
+      "total_contacts": 3
+    },
+    {
+      "lead_id": "lead_RPRMS1Bfq1WGrRExYrFCf0Z3req02T7Zt3qaCtu29aP",
+      "client_name": "Randall Kuikstra",
+      "client_email": "rkuikstra39@gmail.com",
+      "attorney_firm": "David Tirella",
+      "attorney_email": "dtirella@mckeenassociates.com",
+      "firm_domain": "mckeenassociates.com",
       "search_strategy": "firm_name",
       "needs_apollo_enrichment": true,
       "skip_reason": null,
@@ -110,6 +98,18 @@
       "needs_apollo_enrichment": true,
       "skip_reason": null,
       "total_contacts": 1
+    },
+    {
+      "lead_id": "lead_mLLn2fh9kzR7YEZRm8f5s1aATa9FGG1EsYjcOTL0UuE",
+      "client_name": "Jeramie Lyons",
+      "client_email": "jeramielyons@gmail.com",
+      "attorney_firm": "Angels Reyes",
+      "attorney_email": "jeramielyons@gmail.com",
+      "firm_domain": "gmail.com",
+      "search_strategy": "firm_name",
+      "needs_apollo_enrichment": true,
+      "skip_reason": null,
+      "total_contacts": 4
     },
     {
       "lead_id": "lead_4ZablBki8hvqUMbd4Wmlq1ncve34OvWIZbR9hp30ESj",

@@ -1,0 +1,182 @@
+[
+  {
+    "timestamp": "2025-08-10T20:28:11.535255",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "data": {
+      "person": {
+        "id": "test_123",
+        "email": "[email protected]",
+        "phone_numbers": [
+          {
+            "raw_number": "+1234567890",
+            "sanitized_phone": "+11234567890",
+            "type": "mobile"
+          },
+          {
+            "raw_number": "+1987654321",
+            "sanitized_phone": "+11987654321",
+            "type": "work"
+          }
+        ],
+        "first_name": "Test",
+        "last_name": "Person"
+      }
+    }
+  },
+  {
+    "timestamp": "2025-08-10T20:30:40.638551",
+    "headers": {
+      "Host": "d91474c53b23.ngrok-free.app",
+      "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+      "Content-Length": "509",
+      "Accept": "*/*",
+      "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+      "Accept-Encoding": "gzip,deflate,identity",
+      "Accept-Language": "en-us,en;q=0.5",
+      "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+      "Content-Type": "application/json",
+      "Sentry-Trace": "26eba9a21c964b34ad5466fb9a1b41e7-7e7a402286f24103",
+      "Traceparent": "00-0edea41708d1c0e9043113332abb60d2-071cbe31d65a11cf-01",
+      "X-Forwarded-For": "34.28.160.89",
+      "X-Forwarded-Host": "d91474c53b23.ngrok-free.app",
+      "X-Forwarded-Proto": "https"
+    },
+    "data": {
+      "status": "success",
+      "total_requested_enrichments": 1,
+      "unique_enriched_records": 1,
+      "missing_records": 0,
+      "credits_consumed": 5,
+      "people": [
+        {
+          "id": "5e7464ec9e53a90001fba826",
+          "status": "success",
+          "phone_numbers": [
+            {
+              "_id": "6899391c0c181500017ea6e2",
+              "confidence_cd": "high",
+              "dnc_other_info": null,
+              "dnc_status_cd": null,
+              "dnc_status_updated_at": null,
+              "raw_number": "+1 712-251-3365",
+              "sanitized_number": "+17122513365",
+              "status_cd": "valid_number",
+              "type_cd": "mobile",
+              "id": "6899391c0c181500017ea6e2",
+              "key": "6899391c0c181500017ea6e2"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "timestamp": "2025-08-10T20:30:40.677236",
+    "headers": {
+      "Host": "d91474c53b23.ngrok-free.app",
+      "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+      "Content-Length": "814",
+      "Accept": "*/*",
+      "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+      "Accept-Encoding": "gzip,deflate,identity",
+      "Accept-Language": "en-us,en;q=0.5",
+      "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+      "Content-Type": "application/json",
+      "Sentry-Trace": "26eba9a21c964b34ad5466fb9a1b41e7-6c6400367fa349d9",
+      "Traceparent": "00-07daab406c3039be86caab6b475b7ca4-98ee05e2926841e6-01",
+      "X-Forwarded-For": "34.42.47.231",
+      "X-Forwarded-Host": "d91474c53b23.ngrok-free.app",
+      "X-Forwarded-Proto": "https"
+    },
+    "data": {
+      "status": "success",
+      "total_requested_enrichments": 1,
+      "unique_enriched_records": 1,
+      "missing_records": 0,
+      "credits_consumed": 5,
+      "people": [
+        {
+          "id": "54a2080a74686933188d9806",
+          "status": "success",
+          "phone_numbers": [
+            {
+              "_id": "6899391e0c181500017ea6e3",
+              "confidence_cd": "high",
+              "dnc_other_info": null,
+              "dnc_status_cd": null,
+              "dnc_status_updated_at": null,
+              "raw_number": "+1 248-770-8743",
+              "sanitized_number": "+12487708743",
+              "status_cd": "valid_number",
+              "type_cd": "other",
+              "id": "6899391e0c181500017ea6e3",
+              "key": "6899391e0c181500017ea6e3"
+            },
+            {
+              "_id": "6899391e0c181500017ea6e4",
+              "confidence_cd": "high",
+              "dnc_other_info": null,
+              "dnc_status_cd": null,
+              "dnc_status_updated_at": null,
+              "raw_number": "+1 248-254-4908",
+              "sanitized_number": "+12482544908",
+              "status_cd": "valid_number",
+              "type_cd": "mobile",
+              "id": "6899391e0c181500017ea6e4",
+              "key": "6899391e0c181500017ea6e4"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "timestamp": "2025-08-10T20:30:40.790792",
+    "headers": {
+      "Host": "d91474c53b23.ngrok-free.app",
+      "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+      "Content-Length": "508",
+      "Accept": "*/*",
+      "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+      "Accept-Encoding": "gzip,deflate,identity",
+      "Accept-Language": "en-us,en;q=0.5",
+      "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+      "Content-Type": "application/json",
+      "Sentry-Trace": "26eba9a21c964b34ad5466fb9a1b41e7-783408c9faea4b93",
+      "Traceparent": "00-0d580e5e27a85de20e490759b1dd2397-1aaa9bd741d1be46-01",
+      "X-Forwarded-For": "35.202.76.37",
+      "X-Forwarded-Host": "d91474c53b23.ngrok-free.app",
+      "X-Forwarded-Proto": "https"
+    },
+    "data": {
+      "status": "success",
+      "total_requested_enrichments": 1,
+      "unique_enriched_records": 1,
+      "missing_records": 0,
+      "credits_consumed": 5,
+      "people": [
+        {
+          "id": "55e2bbe3f3e5bb5c600033fa",
+          "status": "success",
+          "phone_numbers": [
+            {
+              "_id": "6899391f0c181500017ea6e5",
+              "confidence_cd": "high",
+              "dnc_other_info": null,
+              "dnc_status_cd": null,
+              "dnc_status_updated_at": null,
+              "raw_number": "+1 616-308-9087",
+              "sanitized_number": "+16163089087",
+              "status_cd": "valid_number",
+              "type_cd": "other",
+              "id": "6899391f0c181500017ea6e5",
+              "key": "6899391f0c181500017ea6e5"
+            }
+          ]
+        }
+      ]
+    }
+  }
+]

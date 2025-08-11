@@ -18,7 +18,8 @@ def get_todays_leads():
     encoded_key = b64encode(f"{api_key}:".encode('utf-8')).decode('utf-8')
 
     # Set up the request using Advanced Filtering API
-    smart_view_id = "save_ebxRoBR5KEXJz0jTSCfn1xyaXMQYBHmskqU6iCOoZd9"
+    todays_leads_view_id = "save_ebxRoBR5KEXJz0jTSCfn1xyaXMQYBHmskqU6iCOoZd9"
+    all_meta_leads_view_id = "save_TOTstqdumHKQcNUaztinosJBnRDPYd7IAMhU2SuKyVH"
     url = 'https://api.close.com/api/v1/data/search/'
     
     headers = {
@@ -27,12 +28,12 @@ def get_todays_leads():
         'Accept': 'application/json'
     }
 
-    # Use the Advanced Filtering API with saved search
-    # This approach uses the saved search to filter the results
+    # Try today's leads first
+    print("Checking today's leads smart view...")
     payload = {
         "query": {
             "type": "saved_search",
-            "saved_search_id": smart_view_id
+            "saved_search_id": todays_leads_view_id
         },
         "_fields": {
             "lead": ["id", "display_name", "status_id", "name", "contacts", "custom"]
@@ -45,9 +46,34 @@ def get_todays_leads():
         response = requests.post(url, headers=headers, json=payload)
         response.raise_for_status()  # Raise an error for bad status codes
         
-        # Parse and return the leads
+        # Parse the leads
         leads = response.json()
-        return leads
+        lead_count = len(leads.get('data', []))
+        
+        if lead_count > 0:
+            print(f"Found {lead_count} leads in today's leads view")
+            return leads
+        else:
+            print("No leads found in today's leads view, falling back to all meta leads...")
+            
+            # Fallback to all meta leads 
+            payload["query"]["saved_search_id"] = all_meta_leads_view_id
+            payload["results_limit"] = 100  # Process more leads
+            
+            print(f"DEBUG: Requesting from smart view: {all_meta_leads_view_id}")
+            print(f"DEBUG: Request payload: {json.dumps(payload, indent=2)}")
+            
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            
+            leads = response.json()
+            print(f"DEBUG: Full API response keys: {list(leads.keys())}")
+            print(f"DEBUG: Response: {json.dumps(leads, indent=2)[:500]}...")  # First 500 chars
+            
+            lead_count = len(leads.get('data', []))
+            total_in_view = leads.get('total_results', leads.get('has_more', 'unknown'))
+            print(f"Found {lead_count} leads in all meta leads view (showing {lead_count} of {total_in_view} total)")
+            return leads
         
     except requests.exceptions.RequestException as e:
         print(f"Error fetching leads: {e}")
@@ -91,18 +117,24 @@ def process_leads_data(leads_data):
             
             # Extract custom fields (attorney info) from the client contact
             # The custom fields are stored directly on the contact with "custom." prefix
-            attorney_name = client_contact.get('custom.cf_bB8dqX4BWGbISOehyNVVaZhJpfV9OZNOqs5WfYjaRYv', 'N/A')
+            
+            # Try to get the firm name first (this is likely the "Attorney Name" field from the screenshot)
+            firm_name = client_contact.get('custom.cf_bB8dqX4BWGbISOehyNVVaZhJpfV9OZNOqs5WfYjaRYv', 'N/A')
             attorney_email = client_contact.get('custom.cf_vq0cl2Sj1h0QaSePdnTdf3NyAjx3w4QcgmlhgJrWrZE', 'N/A')
             
-            # If attorney name not found, try the law firm name field
-            if attorney_name == 'N/A':
-                attorney_name = client_contact.get('custom.cf_lQKyH0EhHsNDLZn8KqfFSb0342doHgTNfWdTcfWCljw', 'N/A')
+            # If firm name not found in first field, try the law firm name field
+            if firm_name == 'N/A':
+                firm_name = client_contact.get('custom.cf_lQKyH0EhHsNDLZn8KqfFSb0342doHgTNfWdTcfWCljw', 'N/A')
             
-            # If attorney name not found in custom fields, check for separate attorney contact
+            # Set attorney_name to firm_name for consistency with existing code
+            attorney_name = firm_name
+            
+            # If no firm name found in custom fields, check for separate attorney contact
             if attorney_name == 'N/A' and len(lead.get('contacts', [])) > 1:
                 for contact in lead['contacts'][1:]:  # Skip first contact (client)
                     contact_title = contact.get('title', '').lower()
                     if 'attorney' in contact_title or 'law' in contact_title or 'firm' in contact_title:
+                        # Try to get firm name from contact name or organization
                         attorney_name = contact.get('name', contact.get('display_name', 'N/A'))
                         # Also get attorney email from this contact if available
                         if contact.get('emails') and len(contact['emails']) > 0:

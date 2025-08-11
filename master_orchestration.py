@@ -5,6 +5,11 @@ import json
 import requests
 from datetime import datetime
 
+# Import the individual script functions
+import get_lawyer_contacts
+import apollo_enrich
+import update_close_leads
+
 def print_header(title):
     """Print a formatted header"""
     print("\n" + "=" * 60)
@@ -14,6 +19,16 @@ def print_header(title):
 def get_timestamp():
     """Get current timestamp for file naming"""
     return datetime.now().strftime("%Y%m%d_%H%M%S")
+
+def save_debug_file(data, filename, debug_mode=False):
+    """Save intermediate data to file if debug mode is enabled"""
+    if debug_mode and data:
+        try:
+            with open(filename, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            print(f"    [DEBUG] Saved intermediate data to {filename}")
+        except Exception as e:
+            print(f"    [DEBUG] Failed to save {filename}: {e}")
 
 def check_prerequisites():
     """Check that all required files and services are ready"""
@@ -66,52 +81,177 @@ def check_prerequisites():
     
     return issues
 
-def run_script(script_name, description, auto_input=None):
-    """Run a Python script with optional automatic input"""
-    print_header(f"RUNNING: {description}")
-    print(f"Command: python {script_name}")
+def get_leads_data():
+    """Get leads data from Close CRM"""
+    print_header("STEP 1: GET LEADS & IDENTIFY LAW FIRMS")
+    print("Getting new leads from Close CRM and extracting lawyer/firm information...")
     
     try:
-        if auto_input:
-            # Run with automatic input
-            process = subprocess.Popen(
-                ['python', script_name],
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1,
-                universal_newlines=True
-            )
+        # Call the function directly instead of running as subprocess
+        leads_data = get_lawyer_contacts.get_todays_leads()
+        if not leads_data:
+            print(" Failed to retrieve leads data")
+            return None
             
-            output, _ = process.communicate(input=auto_input)
-            print(output)
+        processed_leads = get_lawyer_contacts.process_leads_data(leads_data)
+        if not processed_leads:
+            print(" No processed leads data")
+            return None
             
-            if process.returncode == 0:
-                print(f" {script_name} completed successfully")
-                return True
-            else:
-                print(f" {script_name} failed with return code {process.returncode}")
-                return False
-        else:
-            # Run interactively
-            result = subprocess.run(['python', script_name], check=True)
-            print(f" {script_name} completed successfully")
-            return True
-            
-    except subprocess.CalledProcessError as e:
-        print(f" {script_name} failed: {e}")
-        return False
-    except KeyboardInterrupt:
-        print(f" {script_name} interrupted by user")
-        return False
+        # Package the data
+        leads_package = {
+            "timestamp": leads_data.get('timestamp', datetime.now().isoformat()),
+            "total_leads": len(processed_leads),
+            "leads_needing_enrichment": len([l for l in processed_leads if l.get('needs_apollo_enrichment', False)]),
+            "leads": processed_leads
+        }
+        
+        print(f" Successfully processed {leads_package['total_leads']} leads")
+        print(f" Leads needing enrichment: {leads_package['leads_needing_enrichment']}")
+        
+        return leads_package
+        
     except Exception as e:
-        print(f" Error running {script_name}: {e}")
+        print(f" Error getting leads data: {e}")
+        return None
+
+def enrich_companies_and_people(leads_data):
+    """Enrich companies and people data using Apollo"""
+    print_header("STEP 2: COMPANY & PEOPLE ENRICHMENT") 
+    print("Running Apollo enrichment to get company and people data...")
+    
+    if not leads_data or not leads_data.get('leads'):
+        print(" No leads data to process")
+        return None
+        
+    try:
+        # Process leads that need enrichment
+        leads_to_process = [lead for lead in leads_data['leads'] if lead.get('needs_apollo_enrichment', False)]
+        print(f"Processing {len(leads_to_process)} leads (company lookup only)...")
+        
+        results = []
+        processed_count = 0
+        successful_searches = 0
+        
+        for lead in leads_to_process:
+            processed_count += 1
+            print(f"\nSearching firm for: {lead.get('client_name')} -> {lead.get('attorney_firm')}")
+            
+            # Call apollo_enrich function directly
+            search_result = apollo_enrich.search_firm_with_retry(lead)
+            results.append(search_result)
+            
+            if search_result.get('search_successful'):
+                successful_searches += 1
+        
+        # Package the enriched data
+        enriched_package = {
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'mode': 'companies_only',
+            'total_leads_processed': processed_count,
+            'successful_searches': successful_searches,
+            'success_rate': f"{(successful_searches/processed_count)*100:.1f}%" if processed_count else "0%",
+            'search_results': results
+        }
+        
+        print(f"\nCompany enrichment complete:")
+        print(f"Processed: {processed_count} | Success: {successful_searches} | Rate: {enriched_package['success_rate']}")
+        
+        return enriched_package
+        
+    except Exception as e:
+        print(f" Error during enrichment: {e}")
+        return None
+
+def send_phone_requests(enriched_data):
+    """Send phone enrichment requests to Apollo"""
+    print_header("STEP 3: SEND PHONE ENRICHMENT REQUESTS")
+    print("Sending phone number requests to Apollo...")
+    
+    # For now, we'll still call the script since it has complex webhook logic
+    # TODO: Refactor get_apollo_nums.py to accept data directly
+    if not enriched_data:
+        print(" No enriched data to process")
+        return False
+        
+    try:
+        # Temporarily save the enriched data for get_apollo_nums.py
+        temp_file = 'temp_apollo_company_results.json'
+        with open(temp_file, 'w', encoding='utf-8') as f:
+            json.dump(enriched_data, f, indent=2, ensure_ascii=False)
+        
+        # Create symlink for compatibility
+        if os.path.exists('apollo_company_results.json'):
+            os.remove('apollo_company_results.json')
+        os.symlink(temp_file, 'apollo_company_results.json')
+        
+        # Run the phone enrichment script
+        result = subprocess.run(['python', 'get_apollo_nums.py'], 
+                              input="3\n", text=True, capture_output=True)
+        
+        # Clean up temporary files
+        if os.path.islink('apollo_company_results.json'):
+            os.unlink('apollo_company_results.json')
+        if os.path.exists(temp_file):
+            os.remove(temp_file)
+            
+        if result.returncode == 0:
+            print(" Phone enrichment requests sent successfully")
+            return True
+        else:
+            print(f" Phone enrichment may have failed, but continuing...")
+            return False
+            
+    except Exception as e:
+        print(f" Error sending phone requests: {e}")
+        return False
+
+def update_close_with_emails(enriched_data):
+    """Update Close CRM with lawyer contacts (emails only)"""
+    print_header("STEP 4: UPDATE CLOSE CRM WITH EMAILS")
+    print("Adding lawyer contacts with emails to Close CRM...")
+    
+    if not enriched_data:
+        print(" No enriched data to process")
+        return False
+        
+    try:
+        # Call update function directly with emails only
+        # TODO: Refactor update_close_leads.py to accept data directly
+        # For now, use temporary file approach
+        temp_file = 'temp_apollo_results_for_emails.json'
+        with open(temp_file, 'w', encoding='utf-8') as f:
+            json.dump(enriched_data, f, indent=2, ensure_ascii=False)
+        
+        # Create symlink for compatibility
+        if os.path.exists('apollo_company_results.json'):
+            os.remove('apollo_company_results.json')
+        os.symlink(temp_file, 'apollo_company_results.json')
+        
+        # Run the update script (emails only)
+        result = subprocess.run(['python', 'update_close_leads.py'], 
+                              input="n\n", text=True, capture_output=True)
+        
+        # Clean up
+        if os.path.islink('apollo_company_results.json'):
+            os.unlink('apollo_company_results.json')
+        if os.path.exists(temp_file):
+            os.remove(temp_file)
+            
+        if result.returncode == 0:
+            print(" Successfully added lawyer contacts with emails")
+            return True
+        else:
+            print(f" Failed to update Close CRM with emails")
+            return False
+            
+    except Exception as e:
+        print(f" Error updating Close with emails: {e}")
         return False
 
 def wait_for_webhook_data(timeout_minutes=30):
     """Wait for webhook data to arrive"""
-    print_header("WAITING FOR APOLLO WEBHOOK RESPONSES")
+    print_header("STEP 5: WAITING FOR APOLLO WEBHOOK RESPONSES")
     print(f"Waiting up to {timeout_minutes} minutes for phone data...")
     print("You can monitor webhook_server.py console for incoming data")
     
@@ -135,7 +275,7 @@ def wait_for_webhook_data(timeout_minutes=30):
                     
                     if phone_count > 0:
                         print(f" Webhook data received! Found {phone_count} phone numbers")
-                        return True
+                        return data
                         
             except Exception as e:
                 print(f"Error checking webhook data: {e}")
@@ -145,19 +285,101 @@ def wait_for_webhook_data(timeout_minutes=30):
     
     print(f" Timeout reached ({timeout_minutes} minutes)")
     print("You can still run the final update later when webhook data arrives")
-    return False
+    return None
 
-def create_timestamped_filename(base_name):
-    """Create a timestamped filename"""
-    timestamp = get_timestamp()
-    name_part, ext = os.path.splitext(base_name)
-    return f"{name_part}_{timestamp}{ext}"
+def update_close_with_phones(enriched_data, webhook_data):
+    """Update Close CRM with phone numbers"""
+    print_header("STEP 6: UPDATE CLOSE CRM WITH PHONE NUMBERS")
+    print("Adding phone numbers to existing lawyer contacts...")
+    
+    if not enriched_data or not webhook_data:
+        print(" Missing data for phone update")
+        return False
+        
+    try:
+        # Temporarily save both datasets for the update script
+        temp_enriched = 'temp_apollo_results_for_phones.json'
+        temp_webhook = 'temp_webhook_data.json'
+        
+        with open(temp_enriched, 'w', encoding='utf-8') as f:
+            json.dump(enriched_data, f, indent=2, ensure_ascii=False)
+        with open(temp_webhook, 'w', encoding='utf-8') as f:
+            json.dump(webhook_data, f, indent=2, ensure_ascii=False)
+        
+        # Create symlinks for compatibility
+        if os.path.exists('apollo_company_results.json'):
+            os.remove('apollo_company_results.json')
+        if os.path.exists('webhook_data.json'):
+            os.remove('webhook_data.json')
+        os.symlink(temp_enriched, 'apollo_company_results.json')
+        os.symlink(temp_webhook, 'webhook_data.json')
+        
+        # Run the update script (with phones)
+        result = subprocess.run(['python', 'update_close_leads.py'], 
+                              input="y\n", text=True, capture_output=True)
+        
+        # Clean up temporary files
+        cleanup_files = [
+            'apollo_company_results.json', 'webhook_data.json', 
+            temp_enriched, temp_webhook
+        ]
+        for file in cleanup_files:
+            if os.path.islink(file):
+                os.unlink(file)
+            elif os.path.exists(file):
+                os.remove(file)
+                
+        if result.returncode == 0:
+            print(" Successfully updated contacts with phone numbers")
+            return True
+        else:
+            print(" Phone number update failed")
+            return False
+            
+    except Exception as e:
+        print(f" Error updating Close with phones: {e}")
+        return False
 
-def modify_script_for_timestamps(script_name, original_filename, timestamped_filename):
-    """Modify script output to use timestamped filename"""
-    # This is a simplified approach - in practice you might want to pass the filename as an argument
-    # For now, we'll rename the output file after the script runs
-    return timestamped_filename
+def save_final_results(leads_data, enriched_data, webhook_data, timestamp, debug_mode=False):
+    """Save final results and audit trail"""
+    print_header("SAVING FINAL RESULTS")
+    
+    try:
+        # Save final enriched results
+        final_results = {
+            'session_id': timestamp,
+            'timestamp': datetime.now().isoformat(),
+            'pipeline_summary': {
+                'total_leads_processed': enriched_data.get('total_leads_processed', 0) if enriched_data else 0,
+                'successful_enrichments': enriched_data.get('successful_searches', 0) if enriched_data else 0,
+                'phone_data_received': bool(webhook_data),
+                'phone_numbers_found': sum(
+                    len(person.get('phone_numbers', []))
+                    for response in (webhook_data or [])
+                    for person in response.get('data', {}).get('people', [])
+                ) if webhook_data else 0
+            },
+            'enriched_results': enriched_data,
+            'webhook_responses': webhook_data
+        }
+        
+        final_filename = f"final_enrichment_results_{timestamp}.json"
+        with open(final_filename, 'w', encoding='utf-8') as f:
+            json.dump(final_results, f, indent=2, ensure_ascii=False)
+        
+        print(f" Final results saved to: {final_filename}")
+        
+        # Save debug files if requested
+        if debug_mode:
+            save_debug_file(leads_data, f"debug_leads_{timestamp}.json", True)
+            save_debug_file(enriched_data, f"debug_enriched_{timestamp}.json", True)
+            save_debug_file(webhook_data, f"debug_webhook_{timestamp}.json", True)
+        
+        return final_filename
+        
+    except Exception as e:
+        print(f" Error saving final results: {e}")
+        return None
 
 def main():
     """Run the complete Apollo-Close integration pipeline"""
@@ -176,7 +398,7 @@ def main():
     
     print("\n All prerequisites met!")
     
-    # Ask user for confirmation
+    # Ask user for configuration
     print("\nThis will:")
     print("1. Get new leads from Close CRM and find law firms")
     print("2. Enrich companies and people data from Apollo")
@@ -190,145 +412,87 @@ def main():
         print("Pipeline cancelled by user")
         return
     
+    debug_choice = input("Enable debug mode (saves intermediate files)? (y/n): ").lower().strip()
+    debug_mode = debug_choice in ['y', 'yes']
+    
     pipeline_start = datetime.now()
     timestamp = get_timestamp()
     
-    # Step 1: Get leads from Close and identify law firms
-    print_header("STEP 1: GET LEADS & IDENTIFY LAW FIRMS")
-    lawyers_file = f"lawyers_of_leads_{timestamp}.json"
+    print(f"\nStarting pipeline session: {timestamp}")
+    if debug_mode:
+        print("Debug mode enabled - intermediate files will be saved")
     
-    print("Getting new leads from Close CRM and extracting lawyer/firm information...")
-    if not run_script('get_lawyer_contacts.py', 'Get Leads & Find Lawyers'):
-        print(" Pipeline failed at step 1")
-        return
+    # Initialize data containers
+    leads_data = None
+    enriched_data = None
+    webhook_data = None
     
-    # Rename output file with timestamp
-    if os.path.exists('lawyers_of_lead_poor.json'):
-        os.rename('lawyers_of_lead_poor.json', lawyers_file)
-        print(f" Output saved as: {lawyers_file}")
-    else:
-        print(" Warning: lawyers_of_lead_poor.json not found after script execution")
-        return
-    
-    # Step 2: Company & People Enrichment
-    print_header("STEP 2: COMPANY & PEOPLE ENRICHMENT")
-    apollo_company_file = f"apollo_company_results_{timestamp}.json"
-    
-    print("Running apollo_enrich.py to get company and people data...")
-    
-    # Temporarily create symlink or copy for apollo_enrich.py to find the file
-    if not os.path.exists('lawyers_of_lead_poor.json'):
-        os.symlink(lawyers_file, 'lawyers_of_lead_poor.json')
-    
-    if not run_script('apollo_enrich.py', 'Company & People Enrichment'):
-        print(" Pipeline failed at step 2")
-        # Clean up symlink
-        if os.path.islink('lawyers_of_lead_poor.json'):
-            os.unlink('lawyers_of_lead_poor.json')
-        return
-    
-    # Rename output file with timestamp and clean up symlink
-    if os.path.exists('apollo_company_results.json'):
-        os.rename('apollo_company_results.json', apollo_company_file)
-        print(f" Output saved as: {apollo_company_file}")
-    
-    if os.path.islink('lawyers_of_lead_poor.json'):
-        os.unlink('lawyers_of_lead_poor.json')
-    
-    # Step 3: Send phone enrichment requests
-    print_header("STEP 3: SEND PHONE ENRICHMENT REQUESTS")
-    print("Sending phone number requests to Apollo...")
-    
-    # Create symlink for get_apollo_nums.py to find the file
-    if not os.path.exists('apollo_company_results.json'):
-        os.symlink(apollo_company_file, 'apollo_company_results.json')
-    
-    # Auto-answer the get_apollo_nums.py prompts (option 3: test webhook AND process contacts)
-    if not run_script('get_apollo_nums.py', 'Phone Enrichment Requests', auto_input="3\n"):
-        print(" Phone enrichment requests may have failed, but continuing...")
-    
-    # Clean up symlink
-    if os.path.islink('apollo_company_results.json'):
-        os.unlink('apollo_company_results.json')
-    
-    # Step 4: Update Close with emails (no phones yet)
-    print_header("STEP 4: UPDATE CLOSE CRM WITH EMAILS")
-    print("Adding lawyer contacts with emails to Close CRM...")
-    
-    # Create symlink for update_close_leads.py to find the file
-    if not os.path.exists('apollo_company_results.json'):
-        os.symlink(apollo_company_file, 'apollo_company_results.json')
-    
-    # Auto-answer 'n' to phone number prompt since webhooks haven't responded yet
-    if not run_script('update_close_leads.py', 'Close CRM Update (Emails)', auto_input="n\n"):
-        print(" Pipeline failed at step 4")
-        if os.path.islink('apollo_company_results.json'):
-            os.unlink('apollo_company_results.json')
-        return
-    
-    # Clean up symlink
-    if os.path.islink('apollo_company_results.json'):
-        os.unlink('apollo_company_results.json')
-    
-    # Step 5: Wait for webhook responses
-    webhook_success = wait_for_webhook_data(timeout_minutes=30)
-    
-    # Step 6: Update Close with phone numbers (if we got webhook data)
-    if webhook_success:
-        print_header("STEP 6: UPDATE CLOSE CRM WITH PHONE NUMBERS")
-        print("Adding phone numbers to existing lawyer contacts...")
+    try:
+        # Step 1: Get leads data
+        leads_data = get_leads_data()
+        if not leads_data:
+            print(" Pipeline failed: Could not get leads data")
+            return
+        save_debug_file(leads_data, f"debug_leads_{timestamp}.json", debug_mode)
         
-        # Create symlink for update_close_leads.py to find the file
-        if not os.path.exists('apollo_company_results.json'):
-            os.symlink(apollo_company_file, 'apollo_company_results.json')
+        # Step 2: Enrich companies and people
+        enriched_data = enrich_companies_and_people(leads_data)
+        if not enriched_data:
+            print(" Pipeline failed: Could not enrich data")
+            return
+        save_debug_file(enriched_data, f"debug_enriched_{timestamp}.json", debug_mode)
         
-        # Auto-answer 'y' to phone number prompt since we have webhook data
-        if not run_script('update_close_leads.py', 'Close CRM Update (Phones)', auto_input="y\n"):
-            print(" Phone number update failed")
+        # Step 3: Send phone requests
+        phone_request_success = send_phone_requests(enriched_data)
+        
+        # Step 4: Update Close with emails
+        email_update_success = update_close_with_emails(enriched_data)
+        if not email_update_success:
+            print(" Pipeline failed: Could not update Close with emails")
+            return
+        
+        # Step 5: Wait for webhook data
+        webhook_data = wait_for_webhook_data(timeout_minutes=30)
+        
+        # Step 6: Update Close with phones (if we got webhook data)
+        phone_update_success = False
+        if webhook_data:
+            save_debug_file(webhook_data, f"debug_webhook_{timestamp}.json", debug_mode)
+            phone_update_success = update_close_with_phones(enriched_data, webhook_data)
+        
+        # Save final results
+        final_file = save_final_results(leads_data, enriched_data, webhook_data, timestamp, debug_mode)
+        
+        # Summary
+        pipeline_end = datetime.now()
+        duration = pipeline_end - pipeline_start
+        
+        print_header("PIPELINE SUMMARY")
+        print(f"Session ID: {timestamp}")
+        print(f"Started: {pipeline_start.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"Ended: {pipeline_end.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"Duration: {duration}")
+        
+        if final_file:
+            print(f"Final Results: {final_file}")
+        
+        if phone_update_success:
+            print("Status: COMPLETE (emails + phones)")
         else:
-            print(" Pipeline completed successfully with phone numbers!")
+            print("Status: PARTIAL (emails only, phones pending)")
         
-        # Clean up symlink
-        if os.path.islink('apollo_company_results.json'):
-            os.unlink('apollo_company_results.json')
+        print("\nNext steps:")
+        print("- Check Close CRM to verify lawyer contacts were added")
+        if not phone_update_success:
+            print("- Monitor webhook_server.py for additional phone data")
+            print("- Re-run pipeline if more webhook data arrives")
             
-        # Rename webhook data with timestamp
-        if os.path.exists('webhook_data.json'):
-            webhook_file = f"webhook_data_{timestamp}.json"
-            os.rename('webhook_data.json', webhook_file)
-            print(f" Webhook data saved as: {webhook_file}")
-    else:
-        print_header("STEP 6: WEBHOOK TIMEOUT")
-        print("Phone data not received within timeout period")
-        print("You can run this command later to add phone numbers:")
-        print("    python update_close_leads.py")
-        print(" Pipeline completed successfully (emails only)")
-    
-    # Summary
-    pipeline_end = datetime.now()
-    duration = pipeline_end - pipeline_start
-    
-    print_header("PIPELINE SUMMARY")
-    print(f"Started: {pipeline_start.strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"Ended: {pipeline_end.strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"Duration: {duration}")
-    print(f"Session ID: {timestamp}")
-    
-    print(f"\nGenerated Files:")
-    print(f"  - {lawyers_file}")
-    print(f"  - {apollo_company_file}")
-    if webhook_success and os.path.exists(f"webhook_data_{timestamp}.json"):
-        print(f"  - webhook_data_{timestamp}.json")
-    
-    if webhook_success:
-        print("Status:  COMPLETE (emails + phones)")
-    else:
-        print("Status:  PARTIAL (emails only, phones pending)")
-    
-    print("\nNext steps:")
-    print("- Check Close CRM to verify lawyer contacts were added")
-    print("- Monitor webhook_server.py for any additional phone data")
-    print("- Run update_close_leads.py again if more webhook data arrives")
+    except Exception as e:
+        print(f"\n Pipeline failed with error: {e}")
+        # Still try to save what we have
+        if leads_data or enriched_data or webhook_data:
+            save_final_results(leads_data, enriched_data, webhook_data, timestamp, debug_mode)
+        raise
 
 if __name__ == "__main__":
     try:

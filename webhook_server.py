@@ -20,9 +20,14 @@ def handle_apollo_webhook():
         
         webhook_data.append(webhook_entry)
         
+        # Save to logs file (append mode for history)
         with open('webhook_logs.json', 'a', encoding='utf-8') as f:
             json.dump(webhook_entry, f, indent=2)
             f.write('\n' + '='*50 + '\n')
+        
+        # Save to data file (overwrite mode for orchestrator)
+        with open('webhook_data.json', 'w', encoding='utf-8') as f:
+            json.dump(webhook_data, f, indent=2, ensure_ascii=False)
         
         print(f"[{timestamp}] APOLLO PHONE DATA RECEIVED!")
         print("=" * 50)
@@ -88,9 +93,14 @@ def test_webhook():
     
     webhook_data.append(webhook_entry)
     
+    # Save to logs file (append mode for history)
     with open('webhook_logs.json', 'a', encoding='utf-8') as f:
         json.dump(webhook_entry, f, indent=2)
         f.write('\n' + '='*50 + '\n')
+    
+    # Save to data file (overwrite mode for orchestrator)
+    with open('webhook_data.json', 'w', encoding='utf-8') as f:
+        json.dump(webhook_data, f, indent=2, ensure_ascii=False)
     
     print(f"[{timestamp}] TEST WEBHOOK DATA RECEIVED!")
     print("=" * 50)

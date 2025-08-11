@@ -1,0 +1,930 @@
+{
+  "session_id": "20250810_195834",
+  "timestamp": "2025-08-10T20:01:01.521111",
+  "pipeline_summary": {
+    "total_leads_processed": 10,
+    "successful_enrichments": 7,
+    "phone_data_received": true,
+    "phone_numbers_found": 5
+  },
+  "enriched_results": {
+    "timestamp": "2025-08-10 19:59:21",
+    "mode": "companies_only",
+    "total_leads_processed": 10,
+    "successful_searches": 7,
+    "success_rate": "70.0%",
+    "search_results": [
+      {
+        "lead_id": "lead_hAB1GNJKqR7Fgkqk2m32PvLvJ2UpSZRJ0S5Jj4je0D5",
+        "client_name": "Jamison Sheats",
+        "firm_name": "Jimmy Rice",
+        "search_successful": true,
+        "winning_strategy": "name_variation",
+        "winning_query": "Rice",
+        "organizations_found": [
+          {
+            "id": "54a2440c7468693fda8c431b",
+            "name": "Bowles Rice LLP",
+            "primary_domain": "bowlesrice.com",
+            "website_url": "http://www.bowlesrice.com",
+            "linkedin_url": "http://www.linkedin.com/company/bowles-rice-llp",
+            "phone": "+1 304-264-4211",
+            "_score": 0.421
+          }
+        ],
+        "attempts": [
+          {
+            "strategy": "name_variation",
+            "query": "Jimmy Rice",
+            "success": false,
+            "organizations_count": 0
+          },
+          {
+            "strategy": "name_variation",
+            "query": "\"Jimmy Rice\"",
+            "success": false,
+            "organizations_count": 0
+          },
+          {
+            "strategy": "name_variation",
+            "query": "Jimmy",
+            "success": false,
+            "organizations_count": 100
+          },
+          {
+            "strategy": "name_variation",
+            "query": "Rice",
+            "success": true,
+            "organizations_count": 96
+          }
+        ],
+        "selection_reason": "score_ok:0.590",
+        "contacts_found": 2,
+        "contacts": [
+          {
+            "name": "Robert Dinsmore",
+            "title": "Lawyer and Partner",
+            "email": "rdinsmor@bowlesrice.com",
+            "linkedin_url": "http://www.linkedin.com/in/robert-w-dinsmore-27201a3b",
+            "phone": null,
+            "organization_id": "54a2440c7468693fda8c431b",
+            "person_id": "557142297369640d70a90100"
+          },
+          {
+            "name": "Joseph Caltrider",
+            "title": "Attorney/Partner",
+            "email": "jcaltrider@bowlesrice.com",
+            "linkedin_url": "http://www.linkedin.com/in/joseph-caltrider-8952296",
+            "phone": null,
+            "organization_id": "54a2440c7468693fda8c431b",
+            "person_id": "57da3be1a6da984a6c6a3433"
+          }
+        ]
+      },
+      {
+        "lead_id": "lead_C6rLep53bD6vJRJ13XRkoN4BdiK79f5RUrYNbAMfWkj",
+        "client_name": "Sarah Eaton",
+        "firm_name": "Evan Beatty",
+        "search_successful": true,
+        "winning_strategy": "name_variation",
+        "winning_query": "Beatty",
+        "organizations_found": [
+          {
+            "id": "5e57b0d80c206a00016d13ab",
+            "name": "Vincent & Beatty LLP",
+            "primary_domain": "vblaw.ie",
+            "website_url": "http://www.vblaw.ie",
+            "linkedin_url": "http://www.linkedin.com/company/vincent-beatty-solicitors",
+            "phone": "+353 1 634 0000",
+            "_score": 0.462
+          }
+        ],
+        "attempts": [
+          {
+            "strategy": "name_variation",
+            "query": "Evan Beatty",
+            "success": false,
+            "organizations_count": 0
+          },
+          {
+            "strategy": "name_variation",
+            "query": "\"Evan Beatty\"",
+            "success": false,
+            "organizations_count": 0
+          },
+          {
+            "strategy": "name_variation",
+            "query": "Evan",
+            "success": false,
+            "organizations_count": 100
+          },
+          {
+            "strategy": "name_variation",
+            "query": "Beatty",
+            "success": true,
+            "organizations_count": 100
+          }
+        ],
+        "selection_reason": "score_ok:0.698",
+        "contacts_found": 2,
+        "contacts": [
+          {
+            "name": "Erik Ekblad",
+            "title": "Partner",
+            "email": "eekblad@beattymyers.com",
+            "linkedin_url": "http://www.linkedin.com/in/erik-ekblad-19a5636",
+            "phone": null,
+            "organization_id": "6741ef912004670001f70ee1",
+            "person_id": "54a4243e7468692abfb0742f"
+          },
+          {
+            "name": "Amanda Webber",
+            "title": "Associate Attorney",
+            "email": "awebber@beattymyers.com",
+            "linkedin_url": "http://www.linkedin.com/in/amanda-webber-146035b2",
+            "phone": null,
+            "organization_id": "6741ef912004670001f70ee1",
+            "person_id": "57dc179fa6da9868b3a25e02"
+          }
+        ]
+      },
+      {
+        "lead_id": "lead_AvQgfYaK12uK8hePivascBDOLBuAUim40YvQFymgid5",
+        "client_name": "Kaelyn Williams",
+        "firm_name": "Daniel Szieber.",
+        "search_successful": true,
+        "winning_strategy": "name_variation",
+        "winning_query": "Daniel",
+        "organizations_found": [
+          {
+            "id": "54a1347f69702d36c97d5200",
+            "name": "Daniel Law",
+            "primary_domain": "daniel-ip.com",
+            "website_url": "http://www.daniel-ip.com",
+            "linkedin_url": "http://www.linkedin.com/company/daniellaw",
+            "phone": null,
+            "_score": 0.75
+          }
+        ],
+        "attempts": [
+          {
+            "strategy": "name_variation",
+            "query": "Daniel Szieber.",
+            "success": false,
+            "organizations_count": 0
+          },
+          {
+            "strategy": "name_variation",
+            "query": "\"Daniel Szieber.\"",
+            "success": false,
+            "organizations_count": 0
+          },
+          {
+            "strategy": "name_variation",
+            "query": "Daniel",
+            "success": true,
+            "organizations_count": 97
+          }
+        ],
+        "selection_reason": "score_ok:0.786",
+        "contacts_found": 1,
+        "contacts": [
+          {
+            "name": "Antonio Curvello",
+            "title": "Partner",
+            "email": "antonio.curvello@daniel-ip.com",
+            "linkedin_url": "http://www.linkedin.com/in/antonio-curvello-7263a81b",
+            "phone": null,
+            "organization_id": "54a1347f69702d36c97d5200",
+            "person_id": "54a2e95b74686930c23f9046"
+          }
+        ]
+      },
+      {
+        "lead_id": "lead_RPRMS1Bfq1WGrRExYrFCf0Z3req02T7Zt3qaCtu29aP",
+        "client_name": "Randall Kuikstra",
+        "firm_name": "David Tirella",
+        "search_successful": true,
+        "winning_strategy": "name_variation",
+        "winning_query": "David",
+        "organizations_found": [
+          {
+            "id": "5d0966f4f651257f456ea5cb",
+            "name": "MARCS I David Lawrence",
+            "primary_domain": "marcs.com.au",
+            "website_url": "http://www.marcs.com.au",
+            "linkedin_url": "http://www.linkedin.com/company/fss-retail",
+            "phone": "+61 3 9662 9136",
+            "_score": 0.37
+          }
+        ],
+        "attempts": [
+          {
+            "strategy": "name_variation",
+            "query": "David Tirella",
+            "success": false,
+            "organizations_count": 0
+          },
+          {
+            "strategy": "name_variation",
+            "query": "\"David Tirella\"",
+            "success": false,
+            "organizations_count": 0
+          },
+          {
+            "strategy": "name_variation",
+            "query": "David",
+            "success": true,
+            "organizations_count": 99
+          }
+        ],
+        "selection_reason": "close_match:0.624",
+        "contacts_found": 2,
+        "contacts": [
+          {
+            "name": "Joanne Cave",
+            "title": "Partner",
+            "email": "jcave@davidlock.com",
+            "linkedin_url": "http://www.linkedin.com/in/joanne-cave-58724716",
+            "phone": null,
+            "organization_id": "54a1291f69702dc1288c3a01",
+            "person_id": "54a2ae9c74686930c21d4b35"
+          },
+          {
+            "name": "Heather Pugh",
+            "title": "Partner",
+            "email": "hpugh@davidlock.com",
+            "linkedin_url": "http://www.linkedin.com/in/heather-pugh-135bab29",
+            "phone": null,
+            "organization_id": "54a1291f69702dc1288c3a01",
+            "person_id": "54a2b1fe74686935be52cf35"
+          }
+        ]
+      },
+      {
+        "lead_id": "lead_2Ti55mz7VNgOg0jTgW7Tmw0ZKwwovbHGyrEqKPUgY9U",
+        "client_name": "Ryan Delong",
+        "firm_name": "Cristine scott",
+        "search_successful": true,
+        "winning_strategy": "name_variation",
+        "winning_query": "Cristine",
+        "organizations_found": [
+          {
+            "id": "54a11d8f69702d86b62c0901",
+            "name": "Cristine Beckwith, Attorney at Law",
+            "primary_domain": "beckwithlawgroup.com",
+            "website_url": "http://www.beckwithlawgroup.com",
+            "linkedin_url": "http://www.linkedin.com/company/cristine-beckwith-attorney-at-law",
+            "phone": "+1 253-238-8273",
+            "_score": 0.381
+          }
+        ],
+        "attempts": [
+          {
+            "strategy": "name_variation",
+            "query": "Cristine scott",
+            "success": false,
+            "organizations_count": 0
+          },
+          {
+            "strategy": "name_variation",
+            "query": "\"Cristine scott\"",
+            "success": false,
+            "organizations_count": 0
+          },
+          {
+            "strategy": "name_variation",
+            "query": "Cristine",
+            "success": true,
+            "organizations_count": 73
+          }
+        ],
+        "selection_reason": "score_ok:0.650",
+        "contacts_found": 1,
+        "contacts": [
+          {
+            "name": "Katy Coic",
+            "title": "Paralegal",
+            "email": "katy@beckwithlawgroup.com",
+            "linkedin_url": "http://www.linkedin.com/in/katy-coic-6a8940160",
+            "phone": null,
+            "organization_id": "54a11d8f69702d86b62c0901",
+            "person_id": "624d80c86d3e5b0001b1998a"
+          }
+        ]
+      },
+      {
+        "lead_id": "lead_AGbQHKx4fvEjswbN7d1vgydtWdbvdyH3w9nzMzNxGEI",
+        "client_name": "laurie hayer",
+        "firm_name": "garret moore",
+        "search_successful": false,
+        "winning_strategy": null,
+        "winning_query": null,
+        "organizations_found": [],
+        "attempts": [
+          {
+            "strategy": "name_variation",
+            "query": "garret moore",
+            "success": false,
+            "organizations_count": 0
+          },
+          {
+            "strategy": "name_variation",
+            "query": "\"garret moore\"",
+            "success": false,
+            "organizations_count": 0
+          },
+          {
+            "strategy": "domain_root_as_name",
+            "query": "mojlaw",
+            "success": false,
+            "organizations_count": 1
+          },
+          {
+            "strategy": "domain_exact",
+            "query": "mojlaw.com",
+            "success": false,
+            "organizations_count": 63
+          }
+        ]
+      },
+      {
+        "lead_id": "lead_UlhydSM3T1F5xLbjpNdHHB8AkcE4fpUE7DvBDgGqjSb",
+        "client_name": "Christina Devoe",
+        "firm_name": "JStGeorge",
+        "search_successful": false,
+        "winning_strategy": null,
+        "winning_query": null,
+        "organizations_found": [],
+        "attempts": [
+          {
+            "strategy": "name_variation",
+            "query": "JStGeorge",
+            "success": false,
+            "organizations_count": 0
+          },
+          {
+            "strategy": "name_variation",
+            "query": "\"JStGeorge\"",
+            "success": false,
+            "organizations_count": 0
+          },
+          {
+            "strategy": "domain_root_as_name",
+            "query": "buckeyelawgroup",
+            "success": false,
+            "organizations_count": 0
+          },
+          {
+            "strategy": "domain_exact",
+            "query": "buckeyelawgroup.com",
+            "success": false,
+            "organizations_count": 63
+          }
+        ]
+      },
+      {
+        "lead_id": "lead_pnZeqYdCTAWsiLawUmCkj68mRR9ClwcNZVK6LHDXEbZ",
+        "client_name": "John Castillo",
+        "firm_name": "Jorge Garcia",
+        "search_successful": true,
+        "winning_strategy": "name_variation",
+        "winning_query": "Jorge",
+        "organizations_found": [
+          {
+            "id": "55ea5feaf3e5bb596000780c",
+            "name": "Jorge Luis Lopez Law Firm",
+            "primary_domain": "lopezgovlaw.com",
+            "website_url": "http://www.lopezgovlaw.com",
+            "linkedin_url": "http://www.linkedin.com/company/jorge-luis-lopez-law-firm",
+            "phone": "+1 305-444-6102",
+            "_score": 0.333
+          }
+        ],
+        "attempts": [
+          {
+            "strategy": "name_variation",
+            "query": "Jorge Garcia",
+            "success": false,
+            "organizations_count": 13
+          },
+          {
+            "strategy": "name_variation",
+            "query": "\"Jorge Garcia\"",
+            "success": false,
+            "organizations_count": 6
+          },
+          {
+            "strategy": "name_variation",
+            "query": "Jorge",
+            "success": true,
+            "organizations_count": 100
+          }
+        ],
+        "selection_reason": "score_ok:0.609",
+        "contacts_found": 0,
+        "contacts": []
+      },
+      {
+        "lead_id": "lead_mLLn2fh9kzR7YEZRm8f5s1aATa9FGG1EsYjcOTL0UuE",
+        "client_name": "Jeramie Lyons",
+        "firm_name": "Angels Reyes",
+        "search_successful": true,
+        "winning_strategy": "name_variation",
+        "winning_query": "Reyes",
+        "organizations_found": [
+          {
+            "id": "5da49a010f33d60001bc9e32",
+            "name": "Law Office of Jesus Reyes",
+            "primary_domain": "jesusreyeslaw.com",
+            "website_url": "http://www.jesusreyeslaw.com",
+            "linkedin_url": "http://www.linkedin.com/company/jesusreyeslaw",
+            "phone": "+1 888-644-3683",
+            "_score": 0.333
+          }
+        ],
+        "attempts": [
+          {
+            "strategy": "name_variation",
+            "query": "Angels Reyes",
+            "success": false,
+            "organizations_count": 0
+          },
+          {
+            "strategy": "name_variation",
+            "query": "\"Angels Reyes\"",
+            "success": false,
+            "organizations_count": 0
+          },
+          {
+            "strategy": "name_variation",
+            "query": "Angels",
+            "success": false,
+            "organizations_count": 100
+          },
+          {
+            "strategy": "name_variation",
+            "query": "Reyes",
+            "success": true,
+            "organizations_count": 99
+          }
+        ],
+        "selection_reason": "close_match:0.609",
+        "contacts_found": 1,
+        "contacts": [
+          {
+            "name": "Israel Reyes",
+            "title": "Managing Partner",
+            "email": "ireyes@reyeslawfirmpa.com",
+            "linkedin_url": "http://www.linkedin.com/in/israel-reyes-26655b56",
+            "phone": null,
+            "organization_id": "54a13b7069702d231f09b301",
+            "person_id": "54a4ed4074686938ac0ac26e"
+          }
+        ]
+      },
+      {
+        "lead_id": "lead_4ZablBki8hvqUMbd4Wmlq1ncve34OvWIZbR9hp30ESj",
+        "client_name": "Jeffery Middleton",
+        "firm_name": "Bill Sublette",
+        "search_successful": false,
+        "winning_strategy": null,
+        "winning_query": null,
+        "organizations_found": [],
+        "attempts": [
+          {
+            "strategy": "name_variation",
+            "query": "Bill Sublette",
+            "success": false,
+            "organizations_count": 0
+          },
+          {
+            "strategy": "name_variation",
+            "query": "\"Bill Sublette\"",
+            "success": false,
+            "organizations_count": 0
+          },
+          {
+            "strategy": "name_variation",
+            "query": "Bill",
+            "success": false,
+            "organizations_count": 100
+          },
+          {
+            "strategy": "name_variation",
+            "query": "Sublette",
+            "success": false,
+            "organizations_count": 42
+          },
+          {
+            "strategy": "domain_root_as_name",
+            "query": "sublettelaw",
+            "success": false,
+            "organizations_count": 0
+          },
+          {
+            "strategy": "domain_exact",
+            "query": "sublettelaw.com",
+            "success": false,
+            "organizations_count": 63
+          }
+        ]
+      }
+    ]
+  },
+  "webhook_responses": [
+    {
+      "timestamp": "2025-08-10T19:59:23.254660",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "data": {
+        "person": {
+          "id": "test_123",
+          "email": "[email protected]",
+          "phone_numbers": [
+            {
+              "raw_number": "+1234567890",
+              "sanitized_phone": "+11234567890",
+              "type": "mobile"
+            },
+            {
+              "raw_number": "+1987654321",
+              "sanitized_phone": "+11987654321",
+              "type": "work"
+            }
+          ],
+          "first_name": "Test",
+          "last_name": "Person"
+        }
+      }
+    },
+    {
+      "timestamp": "2025-08-10T20:00:39.457281",
+      "headers": {
+        "Host": "d91474c53b23.ngrok-free.app",
+        "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+        "Content-Length": "204",
+        "Accept": "*/*",
+        "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+        "Accept-Encoding": "gzip,deflate,identity",
+        "Accept-Language": "en-us,en;q=0.5",
+        "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+        "Content-Type": "application/json",
+        "Sentry-Trace": "ada8f9f8bcef4be2be74bab897cd8385-b8de61c9a9734d99",
+        "Traceparent": "00-552751c1057c25cc2f673dbee67b1bd4-fe975f6005753fd8-01",
+        "X-Forwarded-For": "34.132.25.51",
+        "X-Forwarded-Host": "d91474c53b23.ngrok-free.app",
+        "X-Forwarded-Proto": "https"
+      },
+      "data": {
+        "status": "success",
+        "total_requested_enrichments": 1,
+        "unique_enriched_records": 0,
+        "missing_records": 0,
+        "credits_consumed": 0,
+        "people": [
+          {
+            "id": "54a2b1fe74686935be52cf35",
+            "status": "failure",
+            "phone_numbers": []
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": "2025-08-10T20:00:39.650984",
+      "headers": {
+        "Host": "d91474c53b23.ngrok-free.app",
+        "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+        "Content-Length": "204",
+        "Accept": "*/*",
+        "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+        "Accept-Encoding": "gzip,deflate,identity",
+        "Accept-Language": "en-us,en;q=0.5",
+        "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+        "Content-Type": "application/json",
+        "Sentry-Trace": "ada8f9f8bcef4be2be74bab897cd8385-f88a3ec0187a4ff0",
+        "Traceparent": "00-06369e149e1b73a819c07f3809bcbc1b-52279796fcca0f2f-01",
+        "X-Forwarded-For": "104.198.21.35",
+        "X-Forwarded-Host": "d91474c53b23.ngrok-free.app",
+        "X-Forwarded-Proto": "https"
+      },
+      "data": {
+        "status": "success",
+        "total_requested_enrichments": 1,
+        "unique_enriched_records": 0,
+        "missing_records": 0,
+        "credits_consumed": 0,
+        "people": [
+          {
+            "id": "54a2ae9c74686930c21d4b35",
+            "status": "failure",
+            "phone_numbers": []
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": "2025-08-10T20:00:39.671181",
+      "headers": {
+        "Host": "d91474c53b23.ngrok-free.app",
+        "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+        "Content-Length": "204",
+        "Accept": "*/*",
+        "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+        "Accept-Encoding": "gzip,deflate,identity",
+        "Accept-Language": "en-us,en;q=0.5",
+        "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+        "Content-Type": "application/json",
+        "Sentry-Trace": "ada8f9f8bcef4be2be74bab897cd8385-97d699bc9d884bb8",
+        "Traceparent": "00-131dedd40ec3e5305b8d08ef4813a632-3f2194879186ca7e-01",
+        "X-Forwarded-For": "34.123.125.78",
+        "X-Forwarded-Host": "d91474c53b23.ngrok-free.app",
+        "X-Forwarded-Proto": "https"
+      },
+      "data": {
+        "status": "success",
+        "total_requested_enrichments": 1,
+        "unique_enriched_records": 0,
+        "missing_records": 0,
+        "credits_consumed": 0,
+        "people": [
+          {
+            "id": "54a4243e7468692abfb0742f",
+            "status": "failure",
+            "phone_numbers": []
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": "2025-08-10T20:00:39.682537",
+      "headers": {
+        "Host": "d91474c53b23.ngrok-free.app",
+        "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+        "Content-Length": "204",
+        "Accept": "*/*",
+        "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+        "Accept-Encoding": "gzip,deflate,identity",
+        "Accept-Language": "en-us,en;q=0.5",
+        "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+        "Content-Type": "application/json",
+        "Sentry-Trace": "ada8f9f8bcef4be2be74bab897cd8385-48f2db75cff74938",
+        "Traceparent": "00-2e3609a24d9c6446ab5ead6c1572aacf-d239d5d1de594eae-01",
+        "X-Forwarded-For": "34.132.25.51",
+        "X-Forwarded-Host": "d91474c53b23.ngrok-free.app",
+        "X-Forwarded-Proto": "https"
+      },
+      "data": {
+        "status": "success",
+        "total_requested_enrichments": 1,
+        "unique_enriched_records": 0,
+        "missing_records": 0,
+        "credits_consumed": 0,
+        "people": [
+          {
+            "id": "624d80c86d3e5b0001b1998a",
+            "status": "failure",
+            "phone_numbers": []
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": "2025-08-10T20:00:39.749224",
+      "headers": {
+        "Host": "d91474c53b23.ngrok-free.app",
+        "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+        "Content-Length": "509",
+        "Accept": "*/*",
+        "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+        "Accept-Encoding": "gzip,deflate,identity",
+        "Accept-Language": "en-us,en;q=0.5",
+        "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+        "Content-Type": "application/json",
+        "Sentry-Trace": "ada8f9f8bcef4be2be74bab897cd8385-a38d8eb9cbf449e0",
+        "Traceparent": "00-39cc444a3f9d0c88e851631230799c59-cf23255bdbcdf694-01",
+        "X-Forwarded-For": "34.173.0.227",
+        "X-Forwarded-Host": "d91474c53b23.ngrok-free.app",
+        "X-Forwarded-Proto": "https"
+      },
+      "data": {
+        "status": "success",
+        "total_requested_enrichments": 1,
+        "unique_enriched_records": 1,
+        "missing_records": 0,
+        "credits_consumed": 5,
+        "people": [
+          {
+            "id": "57dc179fa6da9868b3a25e02",
+            "status": "success",
+            "phone_numbers": [
+              {
+                "_id": "6899311c0c181500017ea610",
+                "confidence_cd": "high",
+                "dnc_other_info": null,
+                "dnc_status_cd": null,
+                "dnc_status_updated_at": null,
+                "raw_number": "+1 562-606-1529",
+                "sanitized_number": "+15626061529",
+                "status_cd": "valid_number",
+                "type_cd": "mobile",
+                "id": "6899311c0c181500017ea610",
+                "key": "6899311c0c181500017ea610"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": "2025-08-10T20:00:39.779774",
+      "headers": {
+        "Host": "d91474c53b23.ngrok-free.app",
+        "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+        "Content-Length": "508",
+        "Accept": "*/*",
+        "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+        "Accept-Encoding": "gzip,deflate,identity",
+        "Accept-Language": "en-us,en;q=0.5",
+        "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+        "Content-Type": "application/json",
+        "Sentry-Trace": "ada8f9f8bcef4be2be74bab897cd8385-d044c55f1da34914",
+        "Traceparent": "00-165fb3293037d38c020dc4321feaad4e-3f700e4564c5c31b-01",
+        "X-Forwarded-For": "104.198.21.35",
+        "X-Forwarded-Host": "d91474c53b23.ngrok-free.app",
+        "X-Forwarded-Proto": "https"
+      },
+      "data": {
+        "status": "success",
+        "total_requested_enrichments": 1,
+        "unique_enriched_records": 1,
+        "missing_records": 0,
+        "credits_consumed": 5,
+        "people": [
+          {
+            "id": "54a4ed4074686938ac0ac26e",
+            "status": "success",
+            "phone_numbers": [
+              {
+                "_id": "6865a4462d30f80001e063b1",
+                "confidence_cd": "high",
+                "dnc_other_info": null,
+                "dnc_status_cd": null,
+                "dnc_status_updated_at": null,
+                "raw_number": "+1 786-476-3508",
+                "sanitized_number": "+17864763508",
+                "status_cd": "valid_number",
+                "type_cd": "other",
+                "id": "6865a4462d30f80001e063b1",
+                "key": "6865a4462d30f80001e063b1"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": "2025-08-10T20:00:39.796969",
+      "headers": {
+        "Host": "d91474c53b23.ngrok-free.app",
+        "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+        "Content-Length": "508",
+        "Accept": "*/*",
+        "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+        "Accept-Encoding": "gzip,deflate,identity",
+        "Accept-Language": "en-us,en;q=0.5",
+        "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+        "Content-Type": "application/json",
+        "Sentry-Trace": "ada8f9f8bcef4be2be74bab897cd8385-ecbf672ca86b4c52",
+        "Traceparent": "00-88ecc82315172a6eaa4adf38e31ad633-43bdf18371265794-01",
+        "X-Forwarded-For": "34.136.123.151",
+        "X-Forwarded-Host": "d91474c53b23.ngrok-free.app",
+        "X-Forwarded-Proto": "https"
+      },
+      "data": {
+        "status": "success",
+        "total_requested_enrichments": 1,
+        "unique_enriched_records": 1,
+        "missing_records": 0,
+        "credits_consumed": 5,
+        "people": [
+          {
+            "id": "557142297369640d70a90100",
+            "status": "success",
+            "phone_numbers": [
+              {
+                "_id": "6899311e0c181500017ea612",
+                "confidence_cd": "high",
+                "dnc_other_info": null,
+                "dnc_status_cd": null,
+                "dnc_status_updated_at": null,
+                "raw_number": "+1 304-285-2510",
+                "sanitized_number": "+13042852510",
+                "status_cd": "valid_number",
+                "type_cd": "other",
+                "id": "6899311e0c181500017ea612",
+                "key": "6899311e0c181500017ea612"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": "2025-08-10T20:00:39.799760",
+      "headers": {
+        "Host": "d91474c53b23.ngrok-free.app",
+        "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+        "Content-Length": "508",
+        "Accept": "*/*",
+        "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+        "Accept-Encoding": "gzip,deflate,identity",
+        "Accept-Language": "en-us,en;q=0.5",
+        "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+        "Content-Type": "application/json",
+        "Sentry-Trace": "ada8f9f8bcef4be2be74bab897cd8385-385c843b11f3449d",
+        "Traceparent": "00-e1ab5a490d59c98ba8b3698e9434bb24-921adb4a84b510a4-01",
+        "X-Forwarded-For": "34.28.97.242",
+        "X-Forwarded-Host": "d91474c53b23.ngrok-free.app",
+        "X-Forwarded-Proto": "https"
+      },
+      "data": {
+        "status": "success",
+        "total_requested_enrichments": 1,
+        "unique_enriched_records": 1,
+        "missing_records": 0,
+        "credits_consumed": 5,
+        "people": [
+          {
+            "id": "57da3be1a6da984a6c6a3433",
+            "status": "success",
+            "phone_numbers": [
+              {
+                "_id": "68700aa1b634d000018f549e",
+                "confidence_cd": "high",
+                "dnc_other_info": null,
+                "dnc_status_cd": null,
+                "dnc_status_updated_at": null,
+                "raw_number": "+1 304-264-4214",
+                "sanitized_number": "+13042644214",
+                "status_cd": "valid_number",
+                "type_cd": "other",
+                "id": "68700aa1b634d000018f549e",
+                "key": "68700aa1b634d000018f549e"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": "2025-08-10T20:00:40.291980",
+      "headers": {
+        "Host": "d91474c53b23.ngrok-free.app",
+        "User-Agent": "Mechanize/2.8.1 Ruby/3.3.1p55 (http://github.com/sparklemotion/mechanize/)",
+        "Content-Length": "512",
+        "Accept": "*/*",
+        "Accept-Charset": "ISO-8859-1,utf-8;q=0.7,*;q=0.7",
+        "Accept-Encoding": "gzip,deflate,identity",
+        "Accept-Language": "en-us,en;q=0.5",
+        "Baggage": "transaction=DirectDialFulfillmentWorker+process,messaging.destination=direct_dial_fulfillment",
+        "Content-Type": "application/json",
+        "Sentry-Trace": "ada8f9f8bcef4be2be74bab897cd8385-e1b67f94dab74dab",
+        "Traceparent": "00-03862b9c9e657e1a037eab8bd51a6ad4-7c398a7e912a64a9-01",
+        "X-Forwarded-For": "35.223.209.228",
+        "X-Forwarded-Host": "d91474c53b23.ngrok-free.app",
+        "X-Forwarded-Proto": "https"
+      },
+      "data": {
+        "status": "success",
+        "total_requested_enrichments": 1,
+        "unique_enriched_records": 1,
+        "missing_records": 0,
+        "credits_consumed": 5,
+        "people": [
+          {
+            "id": "54a2e95b74686930c23f9046",
+            "status": "success",
+            "phone_numbers": [
+              {
+                "_id": "687fee716177a20001fd6661",
+                "confidence_cd": "high",
+                "dnc_other_info": null,
+                "dnc_status_cd": null,
+                "dnc_status_updated_at": null,
+                "raw_number": "+55 21 99903-0498",
+                "sanitized_number": "+5521999030498",
+                "status_cd": "valid_number",
+                "type_cd": "other",
+                "id": "687fee716177a20001fd6661",
+                "key": "687fee716177a20001fd6661"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
