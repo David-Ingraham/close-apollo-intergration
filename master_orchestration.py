@@ -92,8 +92,34 @@ def get_leads_data():
         if not leads_data:
             print(" Failed to retrieve leads data")
             return None
+        
+        # Prompt user for lead limit
+        total_available = len(leads_data.get('data', []))
+        print(f"\nHow many leads would you like to process?")
+        print(f"Available: {total_available} leads")
+        print("Options:")
+        print("  'a' or 'all' - Process all leads")
+        print("  1-20 - Process specific number of leads")
+        
+        while True:
+            choice = input("Enter choice: ").lower().strip()
             
-        processed_leads = get_lawyer_contacts.process_leads_data(leads_data)
+            if choice in ['a', 'all']:
+                limit = None
+                print("Processing all leads")
+                break
+            elif choice.isdigit():
+                num = int(choice)
+                if 1 <= num <= 20:
+                    limit = num
+                    print(f"Processing first {num} leads")
+                    break
+                else:
+                    print("Please enter a number between 1-20")
+            else:
+                print("Please enter 'a', 'all', or a number between 1-20")
+            
+        processed_leads = get_lawyer_contacts.process_leads_data(leads_data, limit)
         if not processed_leads:
             print(" No processed leads data")
             return None
@@ -318,46 +344,130 @@ def update_close_with_phones(enriched_data, webhook_data):
         print(f" Error updating Close with phones: {e}")
         return False
 
-def save_final_results(leads_data, enriched_data, webhook_data, timestamp, debug_mode=False):
-    """Save final results and audit trail"""
-    print_header("SAVING FINAL RESULTS")
+def save_comprehensive_results(leads_data, enriched_data, webhook_data, timestamp, mode="testing"):
+    """Save comprehensive results in readable format"""
+    print_header("SAVING RESULTS")
     
     try:
-        # Save final enriched results
-        final_results = {
-            'session_id': timestamp,
-            'timestamp': datetime.now().isoformat(),
-            'pipeline_summary': {
+        # Create comprehensive results
+        results = {
+            'session_info': {
+                'session_id': timestamp,
+                'timestamp': datetime.now().isoformat(),
+                'mode': mode,
+                'pipeline_version': 'v2.0'
+            },
+            'summary': {
                 'total_leads_processed': enriched_data.get('total_leads_processed', 0) if enriched_data else 0,
-                'successful_enrichments': enriched_data.get('successful_searches', 0) if enriched_data else 0,
-                'phone_data_received': bool(webhook_data),
-                'phone_numbers_found': sum(
+                'successful_firm_matches': enriched_data.get('successful_searches', 0) if enriched_data else 0,
+                'success_rate': enriched_data.get('success_rate', '0%') if enriched_data else '0%',
+                'phone_requests_sent': 0,
+                'phone_responses_received': len(webhook_data) if webhook_data else 0,
+                'total_phone_numbers_found': sum(
                     len(person.get('phone_numbers', []))
                     for response in (webhook_data or [])
                     for person in response.get('data', {}).get('people', [])
                 ) if webhook_data else 0
             },
-            'enriched_results': enriched_data,
-            'webhook_responses': webhook_data
+            'detailed_results': []
         }
         
-        final_filename = f"final_enrichment_results_{timestamp}.json"
-        with open(final_filename, 'w', encoding='utf-8') as f:
-            json.dump(final_results, f, indent=2, ensure_ascii=False)
+        # Process each lead's results
+        if enriched_data and enriched_data.get('search_results'):
+            phone_map = {}
+            if webhook_data:
+                # Create phone mapping by person_id
+                for response in webhook_data:
+                    response_data = response.get('data', {})
+                    people = response_data.get('people', [])
+                    for person in people:
+                        person_id = person.get('id')
+                        if person_id:
+                            phone_map[person_id] = person.get('phone_numbers', [])
+            
+            for result in enriched_data['search_results']:
+                lead_result = {
+                    'client_info': {
+                        'client_name': result.get('client_name'),
+                        'lead_id': result.get('lead_id')
+                    },
+                    'original_attorney_info': {
+                        'attorney_firm': result.get('firm_name'),
+                        'attorney_email': result.get('attorney_email'),
+                        'firm_domain': result.get('firm_domain')
+                    },
+                    'apollo_search': {
+                        'search_successful': result.get('search_successful', False),
+                        'strategy_used': result.get('strategy', 'unknown'),
+                        'firm_found': None,
+                        'contacts_found': [],
+                        'validation_notes': []
+                    }
+                }
+                
+                if result.get('search_successful'):
+                    # Add firm information
+                    if result.get('selected_organization'):
+                        org = result['selected_organization']
+                        lead_result['apollo_search']['firm_found'] = {
+                            'name': org.get('name'),
+                            'domain': org.get('primary_domain'),
+                            'industry': org.get('industry'),
+                            'apollo_id': org.get('id'),
+                            'match_score': result.get('match_score', 'unknown')
+                        }
+                    
+                    # Add contacts information
+                    contacts = result.get('contacts', [])
+                    for contact in contacts:
+                        contact_info = {
+                            'name': contact.get('name'),
+                            'title': contact.get('title'),
+                            'email': contact.get('email'),
+                            'person_id': contact.get('person_id'),
+                            'phone_numbers': [],
+                            'phone_status': 'no_request'
+                        }
+                        
+                        # Check for phone numbers
+                        person_id = contact.get('person_id')
+                        if person_id:
+                            results['summary']['phone_requests_sent'] += 1
+                            if person_id in phone_map:
+                                contact_info['phone_numbers'] = phone_map[person_id]
+                                contact_info['phone_status'] = 'received'
+                            else:
+                                contact_info['phone_status'] = 'pending'
+                        
+                        lead_result['apollo_search']['contacts_found'].append(contact_info)
+                
+                results['detailed_results'].append(lead_result)
         
-        print(f" Final results saved to: {final_filename}")
+        # Save main results file
+        filename = f"enrichment_results_{mode}_{timestamp}.json"
+        with open(filename, 'w', encoding='utf-8') as f:
+            json.dump(results, f, indent=2, ensure_ascii=False)
         
-        # Save debug files if requested
-        if debug_mode:
-            save_debug_file(leads_data, f"debug_leads_{timestamp}.json", True)
-            save_debug_file(enriched_data, f"debug_enriched_{timestamp}.json", True)
-            save_debug_file(webhook_data, f"debug_webhook_{timestamp}.json", True)
+        print(f" Results saved to: {filename}")
         
-        return final_filename
+        # Also save raw data files for reference
+        if enriched_data:
+            raw_filename = f"raw_apollo_results_{timestamp}.json"
+            with open(raw_filename, 'w', encoding='utf-8') as f:
+                json.dump(enriched_data, f, indent=2, ensure_ascii=False)
+            print(f" Raw Apollo data saved to: {raw_filename}")
+        
+        if webhook_data:
+            webhook_filename = f"raw_webhook_data_{timestamp}.json"
+            with open(webhook_filename, 'w', encoding='utf-8') as f:
+                json.dump(webhook_data, f, indent=2, ensure_ascii=False)
+            print(f" Raw webhook data saved to: {webhook_filename}")
+        
+        return filename, results['summary']
         
     except Exception as e:
-        print(f" Error saving final results: {e}")
-        return None
+        print(f" Error saving results: {e}")
+        return None, None
 
 def main():
     """Run the complete Apollo-Close integration pipeline"""
@@ -376,29 +486,48 @@ def main():
     
     print("\n All prerequisites met!")
     
-    # Ask user for configuration
-    print("\nThis will:")
+    # Ask user for mode selection
+    print("\nSelect mode:")
+    print("1. Testing Mode - Run pipeline and save results for review (no Close CRM updates)")
+    print("2. Production Mode - Run full pipeline + save results + update Close CRM")
+    
+    while True:
+        mode_choice = input("\nEnter choice (1 or 2): ").strip()
+        if mode_choice == '1':
+            mode = "testing"
+            update_close = False
+            print("Selected: Testing Mode")
+            break
+        elif mode_choice == '2':
+            mode = "production"
+            update_close = True
+            print("Selected: Production Mode")
+            break
+        else:
+            print("Please enter 1 or 2")
+    
+    # Show what will happen
+    print(f"\nThis will:")
     print("1. Get new leads from Close CRM and find law firms")
     print("2. Enrich companies and people data from Apollo")
-    print("3. Send phone enrichment requests to Apollo")
-    print("4. Update Close CRM with lawyer emails immediately")
-    print("5. Wait for Apollo webhook responses")
-    print("6. Update Close CRM with phone numbers")
+    print("3. Save comprehensive results to timestamped file")
+    if update_close:
+        print("4. Send phone enrichment requests to Apollo")
+        print("5. Update Close CRM with lawyer emails")
+        print("6. Wait for Apollo webhook responses")
+        print("7. Update Close CRM with phone numbers")
+    else:
+        print("4. STOP - Review results before sending phone requests (no Apollo credits used)")
     
-    choice = input("\nProceed with full pipeline? (y/n): ").lower().strip()
+    choice = input(f"\nProceed with {mode} mode? (y/n): ").lower().strip()
     if choice not in ['y', 'yes']:
         print("Pipeline cancelled by user")
         return
     
-    debug_choice = input("Enable debug mode (saves intermediate files)? (y/n): ").lower().strip()
-    debug_mode = debug_choice in ['y', 'yes']
-    
     pipeline_start = datetime.now()
     timestamp = get_timestamp()
     
-    print(f"\nStarting pipeline session: {timestamp}")
-    if debug_mode:
-        print("Debug mode enabled - intermediate files will be saved")
+    print(f"\nStarting {mode} pipeline session: {timestamp}")
     
     # Initialize data containers
     leads_data = None
@@ -411,17 +540,42 @@ def main():
         if not leads_data:
             print(" Pipeline failed: Could not get leads data")
             return
-        save_debug_file(leads_data, f"debug_leads_{timestamp}.json", debug_mode)
         
         # Step 2: Enrich companies and people
         enriched_data = enrich_companies_and_people(leads_data)
         if not enriched_data:
             print(" Pipeline failed: Could not enrich data")
             return
-        save_debug_file(enriched_data, f"debug_enriched_{timestamp}.json", debug_mode)
+        
+        # SAVE RESULTS AND CHECK MODE
+        results_file, summary = save_comprehensive_results(leads_data, enriched_data, None, timestamp, mode)
+        
+        if mode == "testing":
+            # TESTING MODE: Stop here before sending phone requests
+            print_header("TESTING MODE COMPLETE")
+            print("Pipeline stopped before phone requests for review.")
+            print(f"Results saved to: {results_file}")
+            print("\nSUMMARY:")
+            if summary:
+                for key, value in summary.items():
+                    print(f"  {key.replace('_', ' ').title()}: {value}")
+            
+            print("\nREVIEW INSTRUCTIONS:")
+            print("1. Open the results file to review what Apollo found")
+            print("2. Check firm matches and contact quality")
+            print("3. Verify domain validations look correct")
+            print("4. When satisfied, run Production Mode to send phone requests & update Close CRM")
+            print("\nNO phone requests sent - no Apollo credits consumed in testing mode")
+            return
+        
+        # PRODUCTION MODE: Continue with phone requests and Close CRM updates
+        print_header("PRODUCTION MODE: SENDING PHONE REQUESTS")
         
         # Step 3: Send phone requests
         phone_request_success = send_phone_requests(enriched_data)
+        
+        # PRODUCTION MODE: Continue with Close CRM updates
+        print_header("PRODUCTION MODE: UPDATING CLOSE CRM")
         
         # Step 4: Update Close with emails
         email_update_success = update_close_with_emails(enriched_data)
@@ -435,17 +589,16 @@ def main():
         # Step 6: Update Close with phones (if we got webhook data)
         phone_update_success = False
         if webhook_data:
-            save_debug_file(webhook_data, f"debug_webhook_{timestamp}.json", debug_mode)
             phone_update_success = update_close_with_phones(enriched_data, webhook_data)
         
-        # Save final results
-        final_file = save_final_results(leads_data, enriched_data, webhook_data, timestamp, debug_mode)
+        # Save final results with webhook data
+        final_file, final_summary = save_comprehensive_results(leads_data, enriched_data, webhook_data, timestamp, mode)
         
         # Summary
         pipeline_end = datetime.now()
         duration = pipeline_end - pipeline_start
         
-        print_header("PIPELINE SUMMARY")
+        print_header("PRODUCTION PIPELINE SUMMARY")
         print(f"Session ID: {timestamp}")
         print(f"Started: {pipeline_start.strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"Ended: {pipeline_end.strftime('%Y-%m-%d %H:%M:%S')}")
@@ -454,22 +607,27 @@ def main():
         if final_file:
             print(f"Final Results: {final_file}")
         
+        if final_summary:
+            print("\nFINAL SUMMARY:")
+            for key, value in final_summary.items():
+                print(f"  {key.replace('_', ' ').title()}: {value}")
+        
         if phone_update_success:
-            print("Status: COMPLETE (emails + phones)")
+            print("\nStatus: COMPLETE (emails + phones pushed to Close CRM)")
         else:
-            print("Status: PARTIAL (emails only, phones pending)")
+            print("\nStatus: PARTIAL (emails pushed, phones pending)")
         
         print("\nNext steps:")
         print("- Check Close CRM to verify lawyer contacts were added")
         if not phone_update_success:
             print("- Monitor webhook_server.py for additional phone data")
-            print("- Re-run pipeline if more webhook data arrives")
+            print("- Re-run production mode if more webhook data arrives")
             
     except Exception as e:
         print(f"\n Pipeline failed with error: {e}")
         # Still try to save what we have
         if leads_data or enriched_data or webhook_data:
-            save_final_results(leads_data, enriched_data, webhook_data, timestamp, debug_mode)
+            save_comprehensive_results(leads_data, enriched_data, webhook_data, timestamp, mode)
         raise
 
 if __name__ == "__main__":

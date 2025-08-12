@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 import json
 import datetime
 import os
+import time
 
 app = Flask(__name__)
 webhook_data = []
@@ -20,10 +21,13 @@ def handle_apollo_webhook():
         
         webhook_data.append(webhook_entry)
         
-        # Save to logs file (append mode for history)
-        with open('webhook_logs.json', 'a', encoding='utf-8') as f:
+        # Save to timestamped logs file
+        timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        unix_timestamp = int(time.time())
+        log_filename = f'apollo_num_response.{timestamp_str}_{unix_timestamp}.json'
+        
+        with open(log_filename, 'w', encoding='utf-8') as f:
             json.dump(webhook_entry, f, indent=2)
-            f.write('\n' + '='*50 + '\n')
         
         # Save to data file (overwrite mode for orchestrator)
         with open('webhook_data.json', 'w', encoding='utf-8') as f:
@@ -67,49 +71,7 @@ def health_check():
 def get_webhook_data():
     return jsonify(webhook_data)
 
-@app.route('/test-webhook', methods=['POST'])
-def test_webhook():
-    """Test endpoint to simulate Apollo sending data"""
-    test_data = {
-        'person': {
-            'id': 'test_123',
-            'email': '[email protected]',
-            'phone_numbers': [
-                {'raw_number': '+1234567890', 'sanitized_phone': '+11234567890', 'type': 'mobile'},
-                {'raw_number': '+1987654321', 'sanitized_phone': '+11987654321', 'type': 'work'}
-            ],
-            'first_name': 'Test',
-            'last_name': 'Person'
-        }
-    }
-    
-    # Directly call the webhook handler with test data
-    timestamp = datetime.datetime.now().isoformat()
-    webhook_entry = {
-        'timestamp': timestamp,
-        'headers': {'Content-Type': 'application/json'},
-        'data': test_data
-    }
-    
-    webhook_data.append(webhook_entry)
-    
-    # Save to logs file (append mode for history)
-    with open('webhook_logs.json', 'a', encoding='utf-8') as f:
-        json.dump(webhook_entry, f, indent=2)
-        f.write('\n' + '='*50 + '\n')
-    
-    # Save to data file (overwrite mode for orchestrator)
-    with open('webhook_data.json', 'w', encoding='utf-8') as f:
-        json.dump(webhook_data, f, indent=2, ensure_ascii=False)
-    
-    print(f"[{timestamp}] TEST WEBHOOK DATA RECEIVED!")
-    print("=" * 50)
-    print(f"Test Person: Test Person")
-    print(f"Test Email: [email protected]")
-    print(f"Test Phone numbers: +1234567890, +1987654321")
-    print("=" * 50)
-    
-    return jsonify({'status': 'success', 'message': 'Test data processed'})
+
 
 if __name__ == '__main__':
     print("Starting Apollo webhook server...")
@@ -117,10 +79,9 @@ if __name__ == '__main__':
     print("  POST /apollo-webhook - Receives Apollo phone data")
     print("  GET /webhook-health - Health check")
     print("  GET /webhook-data - View all received data")
-    print("  POST /test-webhook - Test with mock data")
     print("\nNext steps:")
     print("  1. Run this server")
     print("  2. Start ngrok: ngrok http 5000")
-    print("  3. Run test_webhook.py with your ngrok URL")
+    print("  3. Run get_apollo_nums.py with your ngrok URL")
     print("\nApollo phone data typically arrives 5-30 minutes after request")
     app.run(host='0.0.0.0', port=5000, debug=True)

@@ -3,3 +3,6 @@ currenlty working on making usre new contacts have matching email root domai if 
 going to investigate why im only processing 10 update_close_leads
 
 swithc over to 
+
+
+how do you know the nums in webhook_data are getting to close? how canwe track which number is whos? 

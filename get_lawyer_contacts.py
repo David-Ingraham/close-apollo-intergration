@@ -17,12 +17,59 @@ def get_todays_leads():
     # The ':' after the API key is important!
     encoded_key = b64encode(f"{api_key}:".encode('utf-8')).decode('utf-8')
 
-    # Set up the request using Advanced Filtering API
-    closed_lost_view_id = "save_pkn62aAZeRFBxpo26Ued3BG8gKqoltIN5h9k9cBUvkL"
-    todays_leads_view_id = "save_ebxRoBR5KEXJz0jTSCfn1xyaXMQYBHmskqU6iCOoZd9"
-    full_week_no_contact_view_id="save_4vCZn8S0aEOI7LITSdgww6NHyEYPK42OKKo0UUq9xK0"
-    uncalled_leads_view_id="save_PF9vEDVO1gpuE96xWcJheorDdvwTzZC78h7VSUNWtpz"
-    leads_created_by_mattias="save_uWiE0ZujkNKqQHG19ugGz5dIba891rC9Jd8sgIGqgXh"
+    # Smart View Configuration - CHANGE THIS TO SWITCH VIEWS
+    SMART_VIEWS = {
+        "closed_lost": {
+            "id": "save_pkn62aAZeRFBxpo26Ued3BG8gKqoltIN5h9k9cBUvkL",
+            "name": "Closed Lost"
+        },
+        "todays_leads": {
+            "id": "save_ebxRoBR5KEXJz0jTSCfn1xyaXMQYBHmskqU6iCOoZd9", 
+            "name": "Today's Leads"
+        },
+        "uncalled_leads": {
+            "id": "save_PF9vEDVO1gpuE96xWcJheorDdvwTzZC78h7VSUNWtpz",
+            "name": "Uncalled Leads"
+        },
+        "full_week_no_contact": {
+            "id": "save_4vCZn8S0aEOI7LITSdgww6NHyEYPK42OKKo0UUq9xK0",
+            "name": "Full Week No Contact"
+        },
+        "leads_created_by_mattias": {
+            "id": "save_uWiE0ZujkNKqQHG19ugGz5dIba891rC9Jd8sgIGqgXh",
+            "name": "Leads Created by Mattias"
+        },
+        "full_week_no_outbound": {
+            "id": "save_5ICv93dt5AbFSfrSL7wdEQEgTYFH8bIidyBZ4U67USG",
+            "name": "Full Week No Outbound"
+        }
+    }
+    
+    # Prompt user to select smart view
+    print("\nAvailable Smart Views:")
+    view_options = list(SMART_VIEWS.keys())
+    for i, view_key in enumerate(view_options, 1):
+        view_name = SMART_VIEWS[view_key]["name"]
+        print(f"  {i}. {view_name}")
+    
+    while True:
+        try:
+            choice = input(f"\nSelect smart view (1-{len(view_options)}): ").strip()
+            choice_num = int(choice)
+            if 1 <= choice_num <= len(view_options):
+                selected_view_key = view_options[choice_num - 1]
+                break
+            else:
+                print(f"Please enter a number between 1-{len(view_options)}")
+        except ValueError:
+            print("Please enter a valid number")
+    
+    current_smart_view = SMART_VIEWS[selected_view_key]
+    view_id = current_smart_view["id"]
+    view_name = current_smart_view["name"]
+    
+    print(f"Selected: {view_name}")
+    
     url = 'https://api.close.com/api/v1/data/search/'
     
     headers = {
@@ -31,18 +78,19 @@ def get_todays_leads():
         'Accept': 'application/json'
     }
 
-    # Get uncalled leads
-    print("Fetching uncalled leads smart view...")
+    print(f"Fetching {view_name} smart view...")
+    
+    # Fresh payload for each run - pagination starts at 0
     payload = {
         "query": {
             "type": "saved_search",
-            "saved_search_id": uncalled_leads_view_id
+            "saved_search_id": view_id
         },
         "_fields": {
             "lead": ["id", "display_name", "status_id", "name", "contacts", "custom"]
         },
         "_limit": 100,
-        "_skip": 0
+        "_skip": 0  # Always start fresh
     }
 
     try:
@@ -149,13 +197,58 @@ def extract_domain_from_email(email):
         return email.split('@')[1]
     return None
 
-def process_leads_data(leads_data):
+def is_public_domain(domain):
+    """Check if domain is a public email provider"""
+    public_domains = {
+        "gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "aol.com", 
+        "icloud.com", "protonmail.com", "yandex.com", "msn.com", "live.com", "me.com"
+    }
+    return bool(domain) and domain.lower() in public_domains
+
+def derive_firm_name_from_domain(domain):
+    """Derive likely firm name from email domain"""
+    if not domain:
+        return 'N/A'
+    
+    # Remove common TLDs and get the root
+    domain_root = domain.replace('.com', '').replace('.org', '').replace('.net', '').replace('.law', '')
+    
+    # Common patterns to clean up
+    # Remove 'law' suffix if it exists
+    if domain_root.endswith('law'):
+        domain_root = domain_root[:-3]
+    
+    # Split on common separators and capitalize
+    if 'and' in domain_root:
+        parts = domain_root.split('and')
+        return ' and '.join(part.strip().title() for part in parts if part.strip())
+    elif '&' in domain_root:
+        parts = domain_root.split('&')
+        return ' & '.join(part.strip().title() for part in parts if part.strip())
+    else:
+        # Handle camelCase or combined words
+        # Simple approach: capitalize first letter
+        return domain_root.title()
+    
+    # Examples:
+    # johnfoy.com -> "Johnfoy" 
+    # smith-jones.com -> "Smith-jones"
+    # cellinolaw.com -> "Cellino"
+    # scottbaronassociates.com -> "Scottbaronassociates"
+
+def process_leads_data(leads_data, limit=None):
     """Extract and process lead information into structured format"""
     if not leads_data or 'data' not in leads_data:
         print("No lead data found")
         return None
     
     leads = leads_data.get('data', [])
+    
+    # Apply limit if specified
+    if limit and limit > 0:
+        leads = leads[:limit]
+        print(f"Processing first {len(leads)} leads (limited by user request)")
+    
     processed_leads = []
     
     print(f"\n{'='*80}")
@@ -179,13 +272,25 @@ def process_leads_data(leads_data):
             # Extract custom fields (attorney info) from the client contact
             # The custom fields are stored directly on the contact with "custom." prefix
             
-            # Try to get the firm name first (this is likely the "Attorney Name" field from the screenshot)
-            firm_name = client_contact.get('custom.cf_bB8dqX4BWGbISOehyNVVaZhJpfV9OZNOqs5WfYjaRYv', 'N/A')
+            # Get all available fields
+            law_office = client_contact.get('custom.cf_lQKyH0EhHsNDLZn8KqfFSb0342doHgTNfWdTcfWCljw', 'N/A')  # Law Office field
+            attorney_name_field = client_contact.get('custom.cf_bB8dqX4BWGbISOehyNVVaZhJpfV9OZNOqs5WfYjaRYv', 'N/A')  # Attorney Name field
             attorney_email = client_contact.get('custom.cf_vq0cl2Sj1h0QaSePdnTdf3NyAjx3w4QcgmlhgJrWrZE', 'N/A')
             
-            # If firm name not found in first field, try the law firm name field
-            if firm_name == 'N/A':
-                firm_name = client_contact.get('custom.cf_lQKyH0EhHsNDLZn8KqfFSb0342doHgTNfWdTcfWCljw', 'N/A')
+            # PRIORITY: Law Office > Domain-derived name > Attorney Name
+            if law_office != 'N/A' and law_office.strip():
+                firm_name = law_office
+                print(f"    Using Law Office field: {firm_name}")
+            elif attorney_email != 'N/A' and '@' in attorney_email and not extract_domain_from_email(attorney_email) in ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'aol.com']:
+                # Derive firm name from business email domain
+                domain = extract_domain_from_email(attorney_email)
+                firm_name = derive_firm_name_from_domain(domain)
+                print(f"    Derived from domain {domain}: {firm_name}")
+            elif attorney_name_field != 'N/A' and attorney_name_field.strip():
+                firm_name = attorney_name_field
+                print(f"    Using Attorney Name field: {firm_name}")
+            else:
+                firm_name = 'N/A'
             
             # Set attorney_name to firm_name for consistency with existing code
             attorney_name = firm_name
@@ -216,8 +321,14 @@ def process_leads_data(leads_data):
         elif firm_domain:
             search_strategy = "domain"
         
-        # Only skip if we have absolutely no searchable information
-        if attorney_name == 'N/A' and not firm_domain:
+        # Skip if no Law Office field AND personal email domain
+        # This means we have no reliable way to validate search results
+        if (law_office == 'N/A' or not law_office.strip()) and firm_domain and is_public_domain(firm_domain):
+            needs_enrichment = False
+            skip_reason = "No Law Office field and personal email domain - cannot validate results"
+        
+        # Also skip if we have absolutely no searchable information
+        elif attorney_name == 'N/A' and not firm_domain:
             needs_enrichment = False
             skip_reason = "No firm name or domain available for search"
         
@@ -254,13 +365,39 @@ def process_leads_data(leads_data):
 
 if __name__ == "__main__":
     # Test the function
-    print("Fetching closed lost leads...")
+    print("Fetching uncalled leads...")
     leads = get_todays_leads()
     if leads:
-        print(f"Successfully retrieved {len(leads.get('data', []))} leads")
+        total_available = len(leads.get('data', []))
+        print(f"Successfully retrieved {total_available} leads")
         
-        # Process leads data
-        processed_leads = process_leads_data(leads)
+        # Prompt user for how many leads to process
+        print(f"\nHow many leads would you like to process?")
+        print(f"Available: {total_available} leads")
+        print("Options:")
+        print("  'a' or 'all' - Process all leads")
+        print("  1-20 - Process specific number of leads")
+        
+        while True:
+            choice = input("Enter choice: ").lower().strip()
+            
+            if choice in ['a', 'all']:
+                limit = None
+                print("Processing all leads")
+                break
+            elif choice.isdigit():
+                num = int(choice)
+                if 1 <= num <= 20:
+                    limit = num
+                    print(f"Processing first {num} leads")
+                    break
+                else:
+                    print("Please enter a number between 1-20")
+            else:
+                print("Please enter 'a', 'all', or a number between 1-20")
+        
+        # Process leads data with limit
+        processed_leads = process_leads_data(leads, limit)
         
         if processed_leads:
             # Save to JSON file

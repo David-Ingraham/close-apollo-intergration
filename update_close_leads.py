@@ -40,7 +40,7 @@ def extract_domain_root(domain):
     return domain.split('.')[0].lower()
 
 def is_domain_related(contact_email, attorney_firm_domain):
-    """Check if contact email domain is related to the attorney firm domain"""
+    """Check if contact email domain matches attorney firm domain exactly"""
     if not contact_email or not attorney_firm_domain:
         return True  # If we don't have domain info, allow the contact
     
@@ -50,19 +50,14 @@ def is_domain_related(contact_email, attorney_firm_domain):
     contact_domain = safe_lower(safe_split(contact_email, '@')[1])
     attorney_domain = safe_lower(attorney_firm_domain)
     
-    # Exact domain match
+    # ONLY exact domain match
     if contact_domain == attorney_domain:
         return True
     
-    # Check if domain roots match (e.g., andersonhemmat.com vs andersonhemmat.net)
-    contact_root = extract_domain_root(contact_domain)
-    attorney_root = extract_domain_root(attorney_domain)
-    
-    if contact_root and attorney_root and contact_root == attorney_root:
-        return True
-    
-    # Check if one domain contains the other (subdomain relationships)
-    if attorney_domain in contact_domain or contact_domain in attorney_domain:
+    # ONLY allow legitimate subdomain relationships  
+    # Valid: mail.smithlaw.com vs smithlaw.com
+    # Valid: smithlaw.com vs mail.smithlaw.com
+    if contact_domain.endswith('.' + attorney_domain) or attorney_domain.endswith('.' + contact_domain):
         return True
     
     return False

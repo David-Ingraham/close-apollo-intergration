@@ -99,11 +99,11 @@ def calculate_firm_match_score(org, firm_name, attorney_email=None):
     if validate_domain_match(org, attorney_email):
         domain_bonus = 0.3  # Significant bonus for domain match
     
-    # Legal firm bonus
-    if name_has_legal_hint(org_name):
+    # Legal firm bonus (using industry data)
+    if is_law_firm_by_industry(org):
         legal_bonus = 0.1
     else:
-        legal_bonus = -0.2  # Penalty for non-law firms
+        legal_bonus = -0.1  # Smaller penalty for domain searches since domain match is strong signal
     
     # Geographic penalty for clearly foreign firms
     geo_penalty = 0
@@ -152,7 +152,7 @@ def clean_firm_name(name):
         'law firm', 'attorneys at law', 'llp', 'llc', 'pc', 'pllc',
         'ltd', 'inc', 'corporation', 'corp', 'group', 'associates'
     ]
-    cleaned = name.lower()
+    cleaned = safe_lower(name)
     for term in legal_terms:
         cleaned = cleaned.replace(term, '')
     cleaned = re.sub(r'[,&]+', ' ', cleaned)
@@ -162,7 +162,7 @@ def clean_firm_name(name):
 def extract_domain_root(domain):
     if not domain or domain == 'N/A':
         return None
-    parts = domain.lower().strip().split('.')
+    parts = safe_lower(domain).strip().split('.')
     if len(parts) > 2 and parts[-2] in {"co"}:
         return parts[-3]
     return parts[0] if len(parts) > 1 else domain
@@ -177,7 +177,7 @@ def get_search_variations(firm_name):
 
     # Cleaned version (remove legal terms)
     cleaned = clean_firm_name(firm_name)
-    if cleaned and cleaned != firm_name.lower() and len(cleaned.split()) >= 2:
+    if cleaned and cleaned != safe_lower(firm_name) and len(cleaned.split()) >= 2:
         variations += [cleaned, f'"{cleaned}"']
 
     # Remove prefixes/suffixes but keep core firm name
@@ -211,11 +211,31 @@ def is_law_firm(name):
     return any(t in n for t in indicators)
 
 def _post(headers, payload):
+    """Make POST request with error handling and rate limiting"""
+    import time
     try:
         resp = requests.post(APOLLO_SEARCH_URL, headers=headers, json=payload)
+        
+        # Handle rate limiting
+        if resp.status_code == 429:
+            print(f"      WARN: Rate limit hit (429). Waiting 60 seconds...")
+            time.sleep(60)  # Wait 1 minute
+            # Retry once
+            resp = requests.post(APOLLO_SEARCH_URL, headers=headers, json=payload)
+        
         resp.raise_for_status()
+        
+        # Add delay between all requests to prevent rate limiting
+        time.sleep(2)  # 2 second delay between requests
+        
         return resp.json()
-    except requests.RequestException as e:
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 429:
+            print(f"      WARN: Rate limit exceeded. Try again in 60+ seconds")
+        else:
+            print(f"      WARN: search request error: {e}")
+        return None
+    except Exception as e:
         print(f"      WARN: search request error: {e}")
         return None
 
@@ -227,24 +247,45 @@ def search_apollo_organization(query, page=1, per_page=100, domains=None):
 
     # Name search (primary)
     data = _post(headers, {"q_organization_name": query, "page": page, "per_page": per_page})
-    if data and data.get("organizations"):
-        return data
+    if data:
+        # Fix: Apollo returns 'accounts' not 'organizations'
+        if data.get("accounts"):
+            # Convert accounts to organizations format for compatibility
+            data["organizations"] = data["accounts"]
+            return data
+        elif data.get("organizations"):
+            return data
 
-    # Domain search (exact) if provided
+    # Domain search (exact) if provided - but this often returns irrelevant results
     if domains:
+        print(f"    WARNING: Domain searches often return irrelevant results")
         for key in ("company_domains", "domains", "q_company_domains"):
             data = _post(headers, {key: domains, "page": 1, "per_page": 100})
-            if data and data.get("organizations"):
-                return data
+            if data:
+                # Fix: Apollo returns 'accounts' not 'organizations'  
+                if data.get("accounts"):
+                    data["organizations"] = data["accounts"]
+                    return data
+                elif data.get("organizations"):
+                    return data
     return None
 
 def _primary_domain(org):
+    # First try primary_domain (for organizations format)
     d = org.get("primary_domain")
     if d:
-        return d.lower()
+        return safe_lower(d)
+    
+    # Then try website_url (for accounts format) 
     website = org.get("website_url") or ""
-    website = website.replace("http://", "").replace("https://", "").split("/")[0].lower()
-    return website or None
+    if website:
+        domain = safe_lower(website.replace("http://", "").replace("https://", "").split("/")[0])
+        # Remove www. prefix
+        if domain.startswith("www."):
+            domain = domain[4:]
+        return domain
+    
+    return None
 
 def rank_and_dedupe_organizations(orgs, input_query, input_domain=None, top_k=5):
     deduped = {}
@@ -258,12 +299,12 @@ def rank_and_dedupe_organizations(orgs, input_query, input_domain=None, top_k=5)
         name = o.get("name") or ""
         domain = _primary_domain(o)
         s = 0.0
-        s += difflib.SequenceMatcher(None, name.lower(), input_query.lower()).ratio() * 60
-        if input_query.lower() in name.lower():
+        s += difflib.SequenceMatcher(None, safe_lower(name), safe_lower(input_query)).ratio() * 60
+        if safe_lower(input_query) in safe_lower(name):
             s += 10
-        if is_law_firm(name):
+        if is_law_firm_by_industry(o):
             s += 10
-        if input_domain and domain and input_domain.lower() in domain:
+        if input_domain and domain and safe_lower(input_domain) in domain:
             s += 15
         if o.get("linkedin_url"):
             s += 2
@@ -281,7 +322,7 @@ def rank_and_dedupe_organizations(orgs, input_query, input_domain=None, top_k=5)
             "website_url": o.get("website_url"),
             "linkedin_url": o.get("linkedin_url"),
             "phone": o.get("phone") or (o.get("primary_phone") or {}).get("number"),
-            "_score": round(difflib.SequenceMatcher(None, (o.get('name') or '').lower(), input_query.lower()).ratio(), 3)
+            "_score": round(difflib.SequenceMatcher(None, safe_lower(o.get('name') or ''), safe_lower(input_query)).ratio(), 3)
         })
     return results
 
@@ -303,17 +344,50 @@ def acronym(s: str):
 LEGAL_HINTS = {'law','lawyer','lawyers','attorney','attorneys','legal','counsel','llp','law office','law offices'}
 
 def name_has_legal_hint(name: str):
-    n = (name or "").lower()
+    n = safe_lower(name or "")
     return any(h in n for h in LEGAL_HINTS)
+
+def is_law_firm_by_industry(org):
+    """Check if organization is a law firm based on Apollo industry/keywords data"""
+    if not org:
+        return False
+    
+    # Check industries field (Apollo provides this in organizations format)
+    industries = org.get('industries', [])
+    if industries:
+        industries_text = ' '.join(str(ind).lower() for ind in industries)
+        if any(term in industries_text for term in ['law', 'legal', 'attorney', 'counsel']):
+            return True
+    
+    # Check keywords field (Apollo provides this in organizations format)  
+    keywords = org.get('keywords', [])
+    if keywords:
+        keywords_text = ' '.join(str(kw).lower() for kw in keywords)
+        if any(term in keywords_text for term in ['law', 'legal', 'attorney', 'counsel', 'litigation', 'paralegal']):
+            return True
+    
+    # For accounts format, be more permissive since industry data is often missing
+    # Check organization name (primary detection method for accounts format)
+    org_name = org.get('name', '')
+    if name_has_legal_hint(org_name):
+        return True
+    
+    # Check if website/domain contains legal hints
+    website = org.get('website_url', '')
+    if any(term in safe_lower(website) for term in ['law', 'legal', 'attorney']):
+        return True
+    
+    return False
 
 def choose_best_org(lead_firm_name, firm_domain, candidates, attorney_email=None):
     if not candidates:
         return None, "no_candidates"
     
-    # 1) Filter out clearly non-law firms first
-    law_firms = [c for c in candidates if name_has_legal_hint(c.get("name", ""))]
+    # 1) Filter out clearly non-law firms first using industry data
+    law_firms = [c for c in candidates if is_law_firm_by_industry(c)]
     if law_firms:
         candidates = law_firms
+        print(f"    Filtered to {len(law_firms)} law firms (by industry/keywords)")
     
     # 2) Exact domain match (with email validation)
     if attorney_email and attorney_email != 'N/A':
@@ -337,7 +411,14 @@ def choose_best_org(lead_firm_name, firm_domain, candidates, attorney_email=None
     
     best_candidate, best_score = scored_candidates[0]
     
-    # Much stricter acceptance criteria
+    # STRICTER CRITERIA: When no email domain available, require 95% similarity
+    if not attorney_email or attorney_email == 'N/A':
+        if best_score >= 0.95:  # 95% similarity required when no email validation possible
+            return best_candidate, f"high_confidence_no_email:{best_score:.3f}"
+        else:
+            return None, f"insufficient_similarity_no_email:{best_score:.3f}_requires_0.95"
+    
+    # Standard criteria when we have email domain validation
     if best_score >= 0.75:  # Very high confidence required
         return best_candidate, f"high_confidence:{best_score:.3f}"
     elif best_score >= 0.60 and attorney_email and validate_domain_match(best_candidate, attorney_email):
@@ -349,7 +430,7 @@ def choose_best_org(lead_firm_name, firm_domain, candidates, attorney_email=None
         if domain and domain != "no-domain": bonus += 0.05
         
         # Name token matching bonus (for cases like "KP" matching "KP Attorneys")
-        query_words = set(lead_firm_name.lower().split()) if lead_firm_name else set()
+        query_words = set(safe_lower(lead_firm_name).split()) if lead_firm_name else set()
         name_words = set(name.split())
         word_matches = len(query_words & name_words)
         if word_matches > 0: bonus += word_matches * 0.05
@@ -378,8 +459,8 @@ def choose_best_org(lead_firm_name, firm_domain, candidates, attorney_email=None
     top_s = score(top)
     runner_s = score(runner) if runner else 0.0
 
-    # Must be a law firm
-    if not name_has_legal_hint(top.get("name", "")):
+    # Must be a law firm (using industry data)
+    if not is_law_firm_by_industry(top):
         return None, f"not_law_firm:{top_s:.3f}"
     
     # Relaxed thresholds - accept closer matches
@@ -413,7 +494,7 @@ def search_people_at_organization(org_id, org_name, attorney_firm_domain=None):
 
     payload = {
         "organization_ids": [org_id],
-        "person_titles": ["attorney", "partner", "lawyer", "counsel", "paralegal"],
+        # Removed strict person_titles filter to get more people, then prioritize by title
         "page": 1,
         "per_page": 25
     }
@@ -472,9 +553,9 @@ def search_people_at_organization(org_id, org_name, attorney_firm_domain=None):
                                 contact_root = extract_domain_root(contact_email_domain)
                                 
                                 if attorney_root and contact_root:
-                                    if attorney_root.lower() != contact_root.lower():
+                                    if safe_lower(attorney_root) != safe_lower(contact_root):
                                         contact_domain_valid = False
-                                        print(f"        [{i:2d}/{len(people)}] ⚠ {enriched_person.get('first_name')} {enriched_person.get('last_name')} - Domain mismatch: {contact_email_domain} vs {attorney_firm_domain}")
+                                        print(f"        [{i:2d}/{len(people)}] {enriched_person.get('first_name')} {enriched_person.get('last_name')} - Domain mismatch: {contact_email_domain} vs {attorney_firm_domain}")
                         
                         if contact_domain_valid:
                             contact = {
@@ -566,11 +647,21 @@ def search_firm_with_retry(lead_data):
         if api_response and api_response.get('organizations'):
             orgs = api_response['organizations']
             attempt['organizations_count'] = len(orgs)
+            contacts = []  # Initialize contacts
             # Only accept orgs with EXACT domain match
-            exact_domain_matches = [org for org in orgs if org.get('primary_domain') and email_domain and org.get('primary_domain', '').lower() == email_domain.lower()]
-            law_firms = [org for org in exact_domain_matches if is_law_firm(org.get('name', ''))]
+            exact_domain_matches = [org for org in orgs if _primary_domain(org) and email_domain and safe_lower(_primary_domain(org)) == safe_lower(email_domain)]
+            # For exact domain matches, be less strict - domain match is strong signal
+            law_firms = [org for org in exact_domain_matches if is_law_firm_by_industry(org)]
             
-            print(f"    Found {len(orgs)} total, {len(exact_domain_matches)} exact domain matches, {len(law_firms)} law firms")
+            # If no law firms found by industry, use all exact domain matches (domain is strong signal)
+            if not law_firms and exact_domain_matches:
+                law_firms = exact_domain_matches
+                print(f"    Found {len(orgs)} total, {len(exact_domain_matches)} exact domain matches, using all (domain match is strong signal)")
+            else:
+                print(f"    Found {len(orgs)} total, {len(exact_domain_matches)} exact domain matches, {len(law_firms)} law firms by industry")
+            
+            # Initialize variables
+            best, reason = None, "no_candidates"
             
             if law_firms:
                 ranked = rank_and_dedupe_organizations(law_firms, input_query=domain_root, input_domain=domain_root)
@@ -608,13 +699,22 @@ def search_firm_with_retry(lead_data):
             if api_response and api_response.get('organizations'):
                 orgs = api_response['organizations']
                 attempt['organizations_count'] = len(orgs)
+                contacts = []  # Initialize contacts
                 # Prefer exact domain matches, but allow similar domains
-                domain_matches = [org for org in orgs if email_domain and org.get('primary_domain') and safe_lower(email_domain) in safe_lower(org.get('primary_domain', ''))]
+                domain_matches = [org for org in orgs if email_domain and _primary_domain(org) and safe_lower(email_domain) in safe_lower(_primary_domain(org))]
                 if not domain_matches:
-                    domain_matches = [org for org in orgs if domain_root and org.get('primary_domain') and safe_lower(domain_root) in safe_lower(org.get('primary_domain', ''))]
-                law_firms = [org for org in domain_matches if is_law_firm(org.get('name', ''))]
+                    domain_matches = [org for org in orgs if domain_root and _primary_domain(org) and safe_lower(domain_root) in safe_lower(_primary_domain(org))]
+                law_firms = [org for org in domain_matches if is_law_firm_by_industry(org)]
                 
-                print(f"    Found {len(orgs)} total, {len(domain_matches)} domain-related, {len(law_firms)} law firms")
+                # If no law firms found by industry, use all domain matches (domain is strong signal)
+                if not law_firms and domain_matches:
+                    law_firms = domain_matches
+                    print(f"    Found {len(orgs)} total, {len(domain_matches)} domain-related, using all (domain match is strong signal)")
+                else:
+                    print(f"    Found {len(orgs)} total, {len(domain_matches)} domain-related, {len(law_firms)} law firms by industry")
+                
+                # Initialize variables
+                best, reason = None, "no_candidates"
                 
                 if law_firms:
                     ranked = rank_and_dedupe_organizations(law_firms, input_query=domain_root, input_domain=domain_root)
@@ -657,8 +757,12 @@ def search_firm_with_retry(lead_data):
             if api_response and api_response.get('organizations'):
                 orgs = api_response['organizations']
                 attempt['organizations_count'] = len(orgs)
-                law_firms = [org for org in orgs if is_law_firm(org.get('name', ''))]
+                contacts = []  # Initialize contacts
+                law_firms = [org for org in orgs if is_law_firm_by_industry(org)]
                 print(f"    Found {len(orgs)} total organizations, {len(law_firms)} law firms")
+                
+                # Initialize variables
+                best, reason = None, "no_candidates"
                 
                 if law_firms:
                     # Cross-validate with attorney email domain if available
@@ -668,7 +772,7 @@ def search_firm_with_retry(lead_data):
                         # Boost orgs that match the email domain
                         for org in law_firms:
                             org_domain = org.get('primary_domain', '')
-                            if org_domain and email_domain and org_domain.lower() == email_domain.lower():
+                            if org_domain and email_domain and safe_lower(org_domain) == safe_lower(email_domain):
                                 print(f"      ++ DOMAIN MATCH: {org.get('name')} ({org_domain})")
                     
                     ranked = rank_and_dedupe_organizations(
@@ -686,24 +790,24 @@ def search_firm_with_retry(lead_data):
                             safe_name = org.get('name', 'Unknown').encode('ascii', 'ignore').decode('ascii')
                             print(f"    FINAL SELECTION: {safe_name} ({selection_reason})")
                         
-                        result.update({
-                            'search_successful': True,
-                            'winning_strategy': 'name_variation',
-                            'winning_query': variation,
+                    result.update({
+                        'search_successful': True,
+                        'winning_strategy': 'name_variation',
+                        'winning_query': variation,
                             'organizations_found': [best],
                             'selection_reason': reason,
                             'contacts_found': len(contacts),
                             'contacts': contacts
-                        })
-                        attempt['success'] = True
-                        result['attempts'].append(attempt)
-                        return result
-                    else:
-                        print(f"    No clear winner ({reason}); trying next variation...")
+                    })
+                    attempt['success'] = True
+                    result['attempts'].append(attempt)
+                    return result
                 else:
-                    print(f"    No law firms found")
+                    print(f"    No clear winner ({reason}); trying next variation...")
             else:
-                print(f"    No results found")
+                print(f"    No law firms found")
+        else:
+            print(f"    No results found")
             result['attempts'].append(attempt)
 
     # Domain fallbacks only if not public email domains
@@ -717,8 +821,18 @@ def search_firm_with_retry(lead_data):
             if api_response and api_response.get('organizations'):
                 orgs = api_response['organizations']
                 attempt['organizations_count'] = len(orgs)
-                law_firms = [org for org in orgs if is_law_firm(org.get('name', ''))]
-                print(f"    Found {len(orgs)} total organizations, {len(law_firms)} law firms via domain")
+                contacts = []  # Initialize contacts
+                law_firms = [org for org in orgs if is_law_firm_by_industry(org)]
+                
+                # If no law firms found by industry, use all orgs (domain search is strong signal)
+                if not law_firms and orgs:
+                    law_firms = orgs
+                    print(f"    Found {len(orgs)} total organizations via domain, using all (domain search is strong signal)")
+                else:
+                    print(f"    Found {len(orgs)} total organizations, {len(law_firms)} law firms by industry via domain")
+                
+                # Initialize variables
+                best, reason = None, "no_candidates"
                 
                 if law_firms:
                     ranked = rank_and_dedupe_organizations(law_firms, input_query=domain_root, input_domain=domain_root)
@@ -733,24 +847,24 @@ def search_firm_with_retry(lead_data):
                             safe_name = org.get('name', 'Unknown').encode('ascii', 'ignore').decode('ascii')
                             print(f"    FINAL SELECTION: {safe_name} ({selection_reason})")
                         
-                        result.update({
-                            'search_successful': True,
-                            'winning_strategy': 'domain_root_as_name',
-                            'winning_query': domain_root,
+                    result.update({
+                        'search_successful': True,
+                        'winning_strategy': 'domain_root_as_name',
+                        'winning_query': domain_root,
                             'organizations_found': [best],
                             'selection_reason': reason,
                             'contacts_found': len(contacts),
                             'contacts': contacts
-                        })
-                        attempt['success'] = True
-                        result['attempts'].append(attempt)
-                        return result
-                    else:
-                        print(f"    No clear winner ({reason}); trying next fallback...")
+                    })
+                    attempt['success'] = True
+                    result['attempts'].append(attempt)
+                    return result
                 else:
-                    print(f"    No law firms found via domain")
+                    print(f"    No clear winner ({reason}); trying next fallback...")
             else:
-                print(f"    No results found via domain")
+                print(f"    No law firms found via domain")
+        else:
+            print(f"    No results found via domain")
             result['attempts'].append(attempt)
 
         print(f"  Fallback by exact domain: '{firm_domain}'")
@@ -759,8 +873,18 @@ def search_firm_with_retry(lead_data):
         if api_response and api_response.get('organizations'):
             orgs = api_response['organizations']
             attempt['organizations_count'] = len(orgs)
-            law_firms = [org for org in orgs if is_law_firm(org.get('name', ''))]
-            print(f"    Found {len(orgs)} total organizations, {len(law_firms)} law firms via exact domain")
+            contacts = []  # Initialize contacts
+            law_firms = [org for org in orgs if is_law_firm_by_industry(org)]
+            
+            # If no law firms found by industry, use all orgs (exact domain search is very strong signal)
+            if not law_firms and orgs:
+                law_firms = orgs
+                print(f"    Found {len(orgs)} total organizations via exact domain, using all (exact domain is very strong signal)")
+            else:
+                print(f"    Found {len(orgs)} total organizations, {len(law_firms)} law firms by industry via exact domain")
+            
+            # Initialize variables
+            best, reason = None, "no_candidates"
             
             if law_firms:
                 ranked = rank_and_dedupe_organizations(law_firms, input_query=firm_name or firm_domain, input_domain=domain_root)
@@ -775,26 +899,28 @@ def search_firm_with_retry(lead_data):
                         safe_name = org.get('name', 'Unknown').encode('ascii', 'ignore').decode('ascii')
                         print(f"    FINAL SELECTION: {safe_name} ({selection_reason})")
                     
-                    result.update({
-                        'search_successful': True,
-                        'winning_strategy': 'domain_exact',
-                        'winning_query': firm_domain,
-                        'organizations_found': [best],
-                        'selection_reason': reason,
-                        'contacts_found': len(contacts),
-                        'contacts': contacts
-                    })
-                    attempt['success'] = True
-                    result['attempts'].append(attempt)
-                    return result
-                else:
-                    print(f"    No clear winner ({reason}); no further fallbacks.")
+                result.update({
+                    'search_successful': True,
+                    'winning_strategy': 'domain_exact',
+                    'winning_query': firm_domain,
+                            'organizations_found': [best],
+                            'selection_reason': reason,
+                            'contacts_found': len(contacts),
+                            'contacts': contacts
+                })
+                attempt['success'] = True
+                result['attempts'].append(attempt)
+                return result
             else:
-                print(f"    No law firms found via exact domain")
+                print(f"    No clear winner ({reason}); no further fallbacks.")
         else:
-            print(f"    No results found via exact domain")
-        result['attempts'].append(attempt)
+            print(f"    No law firms found via exact domain")
     else:
+        print(f"    No results found via exact domain")
+    result['attempts'].append(attempt)
+    
+    # Handle public domain fallback
+    if not firm_domain or is_public_domain(firm_domain):
         if firm_domain:
             print(f"  Skipping domain fallback for public email domain: '{firm_domain}'")
 
