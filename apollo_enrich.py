@@ -120,7 +120,7 @@ def prioritize_legal_professionals(people):
     Priority: 1. partner, 2. attorney/lawyer, 3. counsel, 4. paralegal
     """
     def get_title_priority(person):
-        title = person.get('title', '').lower()
+        title = safe_lower(person.get('title', ''))
         
         # Partner gets highest priority
         if 'partner' in title:
@@ -195,7 +195,7 @@ def get_search_variations(firm_name):
         and_version = core.replace('&', 'and')
         if len(and_version.split()) >= 2:
             variations.append(and_version)
-    elif ' and ' in core.lower() and len(core.split()) >= 2:
+    elif ' and ' in safe_lower(core) and len(core.split()) >= 2:
         variations.append(re.sub(r'\s+and\s+', ' & ', core, flags=re.IGNORECASE))
 
     # REMOVE THE INDIVIDUAL NAME FALLBACKS - these cause terrible matches
@@ -355,14 +355,14 @@ def is_law_firm_by_industry(org):
     # Check industries field (Apollo provides this in organizations format)
     industries = org.get('industries', [])
     if industries:
-        industries_text = ' '.join(str(ind).lower() for ind in industries)
+        industries_text = ' '.join(safe_lower(str(ind)) for ind in industries)
         if any(term in industries_text for term in ['law', 'legal', 'attorney', 'counsel']):
             return True
     
     # Check keywords field (Apollo provides this in organizations format)  
     keywords = org.get('keywords', [])
     if keywords:
-        keywords_text = ' '.join(str(kw).lower() for kw in keywords)
+        keywords_text = ' '.join(safe_lower(str(kw)) for kw in keywords)
         if any(term in keywords_text for term in ['law', 'legal', 'attorney', 'counsel', 'litigation', 'paralegal']):
             return True
     
@@ -505,7 +505,35 @@ def search_people_at_organization(org_id, org_name, attorney_firm_domain=None):
         result = response.json()
         
         people = result.get("people", [])
-        print(f"      Found {len(people)} legal professionals")
+        total_entries = result.get("pagination", {}).get("total_entries", 0)
+        print(f"      Found {len(people)} people (total: {total_entries})")
+        
+        # FALLBACK: If organization_ids returns 0 people, try q_organization_name
+        if total_entries == 0 and org_name:
+            print(f"      No people found with organization_ids, trying q_organization_name fallback...")
+            fallback_payload = {
+                "q_organization_name": org_name,
+                "page": 1,
+                "per_page": 25
+            }
+            
+            try:
+                fallback_response = requests.post(search_url, headers=headers, json=fallback_payload)
+                if fallback_response.status_code == 200:
+                    fallback_result = fallback_response.json()
+                    fallback_people = fallback_result.get("people", [])
+                    fallback_total = fallback_result.get("pagination", {}).get("total_entries", 0)
+                    
+                    if fallback_total > 0:
+                        print(f"      FALLBACK SUCCESS: Found {len(fallback_people)} people (total: {fallback_total})")
+                        people = fallback_people
+                        total_entries = fallback_total
+                    else:
+                        print(f"      Fallback also returned 0 people")
+                else:
+                    print(f"      Fallback failed: {fallback_response.status_code}")
+            except Exception as e:
+                print(f"      Fallback error: {e}")
         
         if not people:
             return []
@@ -549,13 +577,17 @@ def search_people_at_organization(org_id, org_name, attorney_firm_domain=None):
                             contact_email_domain = extract_domain_from_email(email)
                             if contact_email_domain:
                                 # Check if domains are related (same root domain)
-                                attorney_root = extract_domain_root(attorney_firm_domain)
-                                contact_root = extract_domain_root(contact_email_domain)
+                                attorney_root = extract_domain_root(attorney_firm_domain) or ""
+                                contact_root = extract_domain_root(contact_email_domain) or ""
                                 
                                 if attorney_root and contact_root:
                                     if safe_lower(attorney_root) != safe_lower(contact_root):
                                         contact_domain_valid = False
                                         print(f"        [{i:2d}/{len(people)}] {enriched_person.get('first_name')} {enriched_person.get('last_name')} - Domain mismatch: {contact_email_domain} vs {attorney_firm_domain}")
+                                elif not attorney_root or not contact_root:
+                                    # If we can't extract roots, consider it invalid
+                                    contact_domain_valid = False
+                                    print(f"        [{i:2d}/{len(people)}] {enriched_person.get('first_name')} {enriched_person.get('last_name')} - Could not extract domain roots for comparison")
                         
                         if contact_domain_valid:
                             contact = {
@@ -575,7 +607,7 @@ def search_people_at_organization(org_id, org_name, attorney_firm_domain=None):
                     print(f"        [{i:2d}/{len(people)}] ✗ {person.get('first_name')} {person.get('last_name')} - Enrichment failed ({enrich_response.status_code})")
                 
                 # Rate limiting to avoid Apollo API limits
-                time.sleep(1)
+                time.sleep(2)
                 
             except Exception as e:
                 print(f"        [{i:2d}/{len(people)}] ERROR enriching {person.get('first_name')}: {e}")
@@ -625,7 +657,7 @@ def search_firm_with_retry(lead_data):
     }
 
     firm_name = lead_data.get('attorney_firm')
-    firm_domain = (lead_data.get('firm_domain') or '').lower()
+    firm_domain = safe_lower(lead_data.get('firm_domain') or '')
     attorney_email = lead_data.get('attorney_email')
     
     print(f"    Input data: firm_name='{firm_name}', attorney_email='{attorney_email}'")
@@ -751,7 +783,7 @@ def search_firm_with_retry(lead_data):
         
         for i, variation in enumerate(variations, 1):
             print(f"  Attempt 2{chr(64+i)}: '{variation}'")
-            time.sleep(0.2)
+            time.sleep(1)
             api_response = search_apollo_organization(variation, page=1, per_page=100)
             attempt = {'strategy': 'name_variation', 'query': variation, 'success': False, 'organizations_count': 0}
             if api_response and api_response.get('organizations'):
@@ -983,7 +1015,7 @@ def enrich_people_at_organization(org_id, org_name):
             else:
                 print(f"        ✗ Failed to enrich {person.get('first_name')} {person.get('last_name')}")
             
-            time.sleep(0.5)  # Rate limiting
+            time.sleep(2)  # Rate limiting - increased delay
             
         except Exception as e:
             print(f"        ERROR enriching {person.get('first_name')}: {e}")
