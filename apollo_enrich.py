@@ -178,7 +178,7 @@ def calculate_firm_match_score(org, firm_name, attorney_email=None):
 def prioritize_legal_professionals(people, return_all=False):
     """
     Sort and select legal professionals based on title priority
-    Priority: 1. partner, 2. attorney/lawyer, 3. counsel, 4. paralegal
+    Priority: 1. partner, 2. attorney/lawyer, 3. counsel, 4. case manager, 5. paralegal
     
     Args:
         people: List of people to prioritize
@@ -196,12 +196,15 @@ def prioritize_legal_professionals(people, return_all=False):
         # Counsel third priority
         elif 'counsel' in title:
             return 3
+        # Case Manager fourth priority
+        elif 'case manager' in title or 'case_manager' in title:
+            return 4
         # Paralegal lowest priority
         elif 'paralegal' in title:
-            return 4
+            return 5
         # Unknown titles get medium priority
         else:
-            return 2.5
+            return 3.5
     
     # Sort by priority (lower number = higher priority)
     sorted_people = sorted(people, key=get_title_priority)
@@ -1052,68 +1055,7 @@ def search_firm_with_retry(lead_data):
     print(f"  FAILED: No organizations found for {firm_name}")
     return result
 
-def enrich_people_at_organization(org_id, org_name):
-    """Get people from org, then enrich each one individually to unlock emails"""
-    api_key = os.getenv('APOLLO_API_KEY')
-    
-    # Step 1: Get people list (no emails unlocked yet)
-    search_url = "https://api.apollo.io/api/v1/mixed_people/search"
-    headers = {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache',
-        'X-Api-Key': api_key
-    }
-    
-    payload = {
-        "organization_ids": [org_id],
-        "person_titles": ["attorney", "partner", "lawyer", "counsel", "paralegal", "case_manager"],
-        "page": 1,
-        "per_page": 25
-    }
-    
-    # Get people list
-    response = requests.post(search_url, headers=headers, json=payload)
-    people = response.json().get("people", [])
-    print(f"      Found {len(people)} legal professionals")
-    
-    # Step 2: Enrich each person to unlock their email
-    enriched_contacts = []
-    enrich_url = "https://api.apollo.io/api/v1/people/match"
-    
-    for person in people:
-        # Use person data to enrich and unlock email
-        enrich_payload = {
-            "first_name": person.get('first_name'),
-            "last_name": person.get('last_name'),
-            "organization_name": org_name,
-            "reveal_personal_emails": True  # THIS is the correct parameter
-        }
-        
-        try:
-            enrich_response = requests.post(enrich_url, headers=headers, json=enrich_payload)
-            if enrich_response.status_code == 200:
-                enriched_person = enrich_response.json().get('person', {})
-                
-                contact = {
-                    'name': f"{enriched_person.get('first_name', '')} {enriched_person.get('last_name', '')}".strip(),
-                    'title': enriched_person.get('title'),
-                    'email': enriched_person.get('email'),  # Real email now
-                    'linkedin_url': enriched_person.get('linkedin_url'),
-                    'phone': None,
-                    'organization_id': org_id,
-                    'person_id': enriched_person.get('id')
-                }
-                enriched_contacts.append(contact)
-                print(f"         Enriched {contact['name']} - {contact['email']}")
-            else:
-                print(f"         Failed to enrich {person.get('first_name')} {person.get('last_name')}")
-            
-            time.sleep(2)  # Rate limiting - increased delay
-            
-        except Exception as e:
-            print(f"        ERROR enriching {person.get('first_name')}: {e}")
-    
-    return enriched_contacts
+# Removed dead function: enrich_people_at_organization (was unused)
 
 def main():
     try:
