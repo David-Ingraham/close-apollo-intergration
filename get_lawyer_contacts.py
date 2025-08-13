@@ -42,6 +42,10 @@ def get_todays_leads():
         "full_week_no_outbound": {
             "id": "save_5ICv93dt5AbFSfrSL7wdEQEgTYFH8bIidyBZ4U67USG",
             "name": "Full Week No Outbound"
+        },
+        "surgery_in_discovery": {
+            "id": "save_O73Z1YkRGhLrN5qtyhti2lLoBYVeTqkKWsiG2ZUj4cE",
+            "name": "Surgery in Discovery"
         }
     }
     
@@ -162,27 +166,12 @@ def get_todays_leads():
             final_result['data'] = all_leads
             return final_result
         else:
-            print("No leads found in uncalled leads view, falling back to all meta leads...")
+            print(f"No leads found in {view_name}, returning empty result...")
             
-            # Reset pagination for fallback
-            payload["query"]["saved_search_id"] = leads_created_by_mattias
-            payload["results_limit"] = 100  # Process more leads
-            payload["_cursor"] = None  # Reset cursor
-            
-            print(f"DEBUG: Requesting from smart view: {leads_created_by_mattias}")
-            print(f"DEBUG: Request payload: {json.dumps(payload, indent=2)}")
-            
-            response = requests.post(url, headers=headers, json=payload)
-            response.raise_for_status()
-            
-            leads = response.json()
-            print(f"DEBUG: Full API response keys: {list(leads.keys())}")
-            print(f"DEBUG: Response: {json.dumps(leads, indent=2)[:500]}...")  # First 500 chars
-            
-            lead_count = len(leads.get('data', []))
-            total_in_view = leads.get('total_results', leads.get('has_more', 'unknown'))
-            print(f"Found {lead_count} leads in all meta leads view (showing {lead_count} of {total_in_view} total)")
-            return leads
+            # Return empty result instead of fallback
+            empty_result = leads.copy()  # Keep metadata from last response
+            empty_result['data'] = []
+            return empty_result
         
     except requests.exceptions.RequestException as e:
         print(f"Error fetching leads: {e}")

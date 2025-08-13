@@ -1066,7 +1066,7 @@ def enrich_people_at_organization(org_id, org_name):
     
     payload = {
         "organization_ids": [org_id],
-        "person_titles": ["attorney", "partner", "lawyer", "counsel", "paralegal"],
+        "person_titles": ["attorney", "partner", "lawyer", "counsel", "paralegal", "case_manager"],
         "page": 1,
         "per_page": 25
     }
@@ -1104,9 +1104,9 @@ def enrich_people_at_organization(org_id, org_name):
                     'person_id': enriched_person.get('id')
                 }
                 enriched_contacts.append(contact)
-                print(f"        ✓ Enriched {contact['name']} - {contact['email']}")
+                print(f"         Enriched {contact['name']} - {contact['email']}")
             else:
-                print(f"        ✗ Failed to enrich {person.get('first_name')} {person.get('last_name')}")
+                print(f"         Failed to enrich {person.get('first_name')} {person.get('last_name')}")
             
             time.sleep(2)  # Rate limiting - increased delay
             
