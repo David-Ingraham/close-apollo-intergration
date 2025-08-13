@@ -710,6 +710,91 @@ def search_people_at_organization(org_id, org_name, attorney_firm_domain=None):
         print(f"      ERROR: People search failed for '{org_name}': {e}")
         return []
 
+def enrich_attorney_email_for_phone(attorney_email, webhook_url=None):
+    """
+    Enrich the original attorney's email to get their direct phone number.
+    Uses email-only enrichment to avoid parsing messy name fields.
+    """
+    if not attorney_email or attorney_email == 'N/A':
+        return None, "no_email_provided"
+    
+    api_key = os.getenv('APOLLO_API_KEY')
+    if not api_key:
+        raise ValueError("APOLLO_API_KEY not found in environment variables")
+    
+    url = "https://api.apollo.io/api/v1/people/match"
+    headers = {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache',
+        'X-Api-Key': api_key
+    }
+    
+    # Email-only enrichment payload
+    payload = {
+        "email": attorney_email,
+        "reveal_personal_emails": True,
+        "reveal_phone_number": True if webhook_url else False
+    }
+    
+    # Add webhook URL if provided (for async phone enrichment)
+    if webhook_url:
+        payload["webhook_url"] = f"{webhook_url}/apollo-webhook"
+    
+    print(f"    Enriching attorney email: {attorney_email}")
+    
+    try:
+        response = requests.post(url, headers=headers, json=payload, timeout=30)
+        
+        if response.status_code == 200:
+            result = response.json()
+            person = result.get('person', {})
+            
+            if person and person.get('id'):
+                # Build attorney contact info
+                attorney_contact = {
+                    'name': f"{person.get('first_name', '')} {person.get('last_name', '')}".strip(),
+                    'title': person.get('title', 'Attorney'),
+                    'email': attorney_email,
+                    'linkedin_url': person.get('linkedin_url'),
+                    'person_id': person.get('id'),
+                    'organization_id': person.get('organization', {}).get('id'),
+                    'organization_name': person.get('organization', {}).get('name'),
+                    'phone': None  # Will be filled by webhook if webhook_url provided
+                }
+                
+                # Try to get immediate phone number if not using webhook
+                if not webhook_url:
+                    phone_numbers = person.get('phone_numbers', [])
+                    if phone_numbers:
+                        attorney_contact['phone'] = phone_numbers[0].get('raw_number')
+                
+                print(f"    Successfully enriched: {attorney_contact['name']} at {attorney_contact.get('organization_name', 'Unknown Org')}")
+                return attorney_contact, "success"
+            else:
+                print(f"    No person data found for email: {attorney_email}")
+                return None, "no_person_data"
+                
+        elif response.status_code == 422:
+            error_detail = response.json() if response.text else "Unknown validation error"
+            print(f"    Validation error for {attorney_email}: {error_detail}")
+            return None, f"validation_error:{error_detail}"
+            
+        else:
+            print(f"    HTTP {response.status_code} error for {attorney_email}")
+            try:
+                error_detail = response.json()
+                print(f"    Details: {error_detail}")
+            except:
+                print(f"    Response: {response.text[:100]}")
+            return None, f"http_error:{response.status_code}"
+            
+    except requests.exceptions.Timeout:
+        print(f"    Request timeout for {attorney_email}")
+        return None, "timeout"
+    except Exception as e:
+        print(f"    Error enriching {attorney_email}: {e}")
+        return None, f"error:{str(e)}"
+
 def search_people_with_fallback(candidates, firm_name, attorney_firm_domain=None):
     """Try multiple organizations until we find people"""
     for i, org in enumerate(candidates):
@@ -733,7 +818,7 @@ def search_people_with_fallback(candidates, firm_name, attorney_firm_domain=None
     
     return None, [], "no_candidates"
 
-def search_firm_with_retry(lead_data):
+def search_firm_with_retry(lead_data, webhook_url=None):
     result = {
         'lead_id': lead_data.get('lead_id'),
         'client_name': lead_data.get('client_name'),
@@ -744,7 +829,9 @@ def search_firm_with_retry(lead_data):
         'winning_strategy': None,
         'winning_query': None,
         'organizations_found': [],
-        'attempts': []
+        'attempts': [],
+        'attorney_contact': None,  # New field for original attorney
+        'attorney_enrichment_status': None
     }
 
     firm_name = lead_data.get('attorney_firm')
@@ -752,6 +839,23 @@ def search_firm_with_retry(lead_data):
     attorney_email = lead_data.get('attorney_email')
     
     print(f"    Input data: firm_name='{firm_name}', attorney_email='{attorney_email}'")
+    
+    # NEW: Enrich the attorney's email to get their direct phone number
+    print(f"\n  ATTORNEY ENRICHMENT: Getting direct contact info for {attorney_email}")
+    if attorney_email and attorney_email != 'N/A':
+        attorney_contact, attorney_status = enrich_attorney_email_for_phone(attorney_email, webhook_url)
+        result['attorney_contact'] = attorney_contact
+        result['attorney_enrichment_status'] = attorney_status
+        
+        if attorney_contact:
+            print(f"    SUCCESS: Found {attorney_contact['name']} - {attorney_contact.get('title', 'Attorney')}")
+        else:
+            print(f"    FAILED: {attorney_status}")
+    else:
+        result['attorney_enrichment_status'] = "no_email_provided"
+        print(f"    SKIPPED: No attorney email provided")
+    
+    print(f"\n  FIRM SEARCH: Finding law firm and other attorneys")
     
     # STRATEGY 1: Domain-First Search (when we have attorney email)
     if attorney_email and '@' in attorney_email and not is_public_domain(extract_domain_from_email(attorney_email)):
