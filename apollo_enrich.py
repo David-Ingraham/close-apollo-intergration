@@ -40,6 +40,67 @@ def safe_extract_domain(email):
         return None
     return email_str.split('@')[1]
 
+def is_domain_related_strict(contact_email, attorney_firm_domain):
+    """
+    Strict domain validation that rejects different TLD combinations.
+    Same logic as update_close_leads.py
+    """
+    if not contact_email or not attorney_firm_domain:
+        return True
+    
+    if '@' not in contact_email:
+        return False
+    
+    contact_domain = safe_lower(safe_split(contact_email, '@')[1])
+    attorney_domain = safe_lower(attorney_firm_domain)
+    
+    # ONLY exact domain match
+    if contact_domain == attorney_domain:
+        return True
+    
+    # Extract base domain and TLD for comparison
+    def get_domain_parts(domain):
+        """Split domain into base name and TLD parts"""
+        parts = domain.split('.')
+        if len(parts) < 2:
+            return None, None
+        
+        # Handle common TLD patterns
+        if len(parts) >= 3 and parts[-2] in ['co', 'com', 'org', 'net', 'gov', 'edu']:
+            # e.g., domain.co.uk, domain.org.uk
+            return '.'.join(parts[:-2]), '.'.join(parts[-2:])
+        else:
+            # e.g., domain.com, domain.org
+            return '.'.join(parts[:-1]), parts[-1]
+    
+    contact_base, contact_tld = get_domain_parts(contact_domain)
+    attorney_base, attorney_tld = get_domain_parts(attorney_domain)
+    
+    # Both domains must have the same base domain and TLD structure
+    if not (contact_base and attorney_base and contact_tld and attorney_tld):
+        return False
+    
+    if contact_tld != attorney_tld:
+        return False  # Different TLD structures (e.g., .org vs .org.uk)
+    
+    if contact_base == attorney_base:
+        return True  # Same base domain and TLD
+    
+    # Check for legitimate subdomain relationships
+    # Valid: mail.smithlaw vs smithlaw (with same TLD)
+    if contact_base.endswith('.' + attorney_base):
+        subdomain = contact_base[:-len('.' + attorney_base)]
+        # Only allow simple subdomains (not complex nested ones)
+        if '.' not in subdomain and len(subdomain) <= 10:
+            return True
+    
+    if attorney_base.endswith('.' + contact_base):
+        subdomain = attorney_base[:-len('.' + contact_base)]
+        if '.' not in subdomain and len(subdomain) <= 10:
+            return True
+    
+    return False
+
 # Correct endpoint (no /api)
 APOLLO_SEARCH_URL = "https://api.apollo.io/v1/mixed_companies/search"
 
@@ -114,10 +175,14 @@ def calculate_firm_match_score(org, firm_name, attorney_email=None):
     final_score = base_score + domain_bonus + legal_bonus + geo_penalty
     return max(0, min(1, final_score))  # Clamp between 0 and 1
 
-def prioritize_legal_professionals(people):
+def prioritize_legal_professionals(people, return_all=False):
     """
-    Sort and select top 2 legal professionals based on title priority
+    Sort and select legal professionals based on title priority
     Priority: 1. partner, 2. attorney/lawyer, 3. counsel, 4. paralegal
+    
+    Args:
+        people: List of people to prioritize
+        return_all: If True, return all sorted people. If False, return top 2.
     """
     def get_title_priority(person):
         title = safe_lower(person.get('title', ''))
@@ -141,8 +206,11 @@ def prioritize_legal_professionals(people):
     # Sort by priority (lower number = higher priority)
     sorted_people = sorted(people, key=get_title_priority)
     
-    # Return top 2
-    return sorted_people[:2]
+    # Return all or top 2 based on parameter
+    if return_all:
+        return sorted_people
+    else:
+        return sorted_people[:2]
 
 def clean_firm_name(name):
     if not name or name == 'N/A':
@@ -496,7 +564,7 @@ def search_people_at_organization(org_id, org_name, attorney_firm_domain=None):
         "organization_ids": [org_id],
         # Removed strict person_titles filter to get more people, then prioritize by title
         "page": 1,
-        "per_page": 25
+        "per_page": 100  # Increased to get more candidates
     }
 
     try:
@@ -514,7 +582,7 @@ def search_people_at_organization(org_id, org_name, attorney_firm_domain=None):
             fallback_payload = {
                 "q_organization_name": org_name,
                 "page": 1,
-                "per_page": 25
+                "per_page": 100  # Increased to get more candidates
             }
             
             try:
@@ -538,21 +606,48 @@ def search_people_at_organization(org_id, org_name, attorney_firm_domain=None):
         if not people:
             return []
         
-        # Apply priority filtering to get top 2 candidates
-        top_people = prioritize_legal_professionals(people)
-        print(f"      Selected top {len(top_people)} candidates based on title priority")
-        for person in top_people:
-            title = person.get('title', 'N/A')
-            name = f"{person.get('first_name', '')} {person.get('last_name', '')}".strip()
-            print(f"        - {name} ({title})")
+        # Apply priority filtering to get ALL legal professionals (not just top 2)
+        all_legal_people = prioritize_legal_professionals(people, return_all=True)
+        print(f"      Found {len(all_legal_people)} legal professionals to check for emails")
         
-        print(f"      Unlocking emails for {len(top_people)} contacts...")
+        # PRE-FLIGHT CHECK: Look at existing email domains before spending credits
+        if attorney_firm_domain and not is_public_domain(attorney_firm_domain):
+            promising_people = []
+            for person in all_legal_people:
+                existing_email = person.get('email')
+                if existing_email and existing_email != 'email_not_unlocked@domain.com':
+                    # Check if existing email domain matches attorney domain
+                    if is_domain_related_strict(existing_email, attorney_firm_domain):
+                        promising_people.append(person)
+                        print(f"      PROMISING: {person.get('first_name')} {person.get('last_name')} - {existing_email}")
+                    else:
+                        contact_domain = safe_extract_domain(existing_email)
+                        print(f"      SKIP: {person.get('first_name')} {person.get('last_name')} - Domain mismatch: {contact_domain} vs {attorney_firm_domain}")
+                else:
+                    # No existing email, might be worth trying to unlock
+                    promising_people.append(person)
+            
+            if not promising_people:
+                print(f"      No promising contacts found - all have domain mismatches vs {attorney_firm_domain}")
+                print(f"      Skipping this organization to save credits")
+                return []
+            
+            print(f"      Found {len(promising_people)} promising contacts (out of {len(all_legal_people)})")
+            all_legal_people = promising_people
         
-        # Step 2: Enrich each person to unlock their email
+        # Step 2: Keep searching through people until we find enough WITH emails
         enrich_url = "https://api.apollo.io/api/v1/people/match"
         enriched_contacts = []
+        target_contacts = 2  # We want to find 2 people with emails
+        max_attempts = min(len(all_legal_people), 10)  # Don't try more than 10 people
         
-        for i, person in enumerate(top_people, 1):
+        print(f"      Unlocking emails for up to {max_attempts} contacts...")
+        
+        for i, person in enumerate(all_legal_people[:max_attempts], 1):
+            # Stop if we already found enough contacts with emails
+            if len(enriched_contacts) >= target_contacts:
+                print(f"      Found {target_contacts} contacts with emails, stopping search")
+                break
             # Use person data to enrich and unlock email
             enrich_payload = {
                 "first_name": person.get('first_name'),
@@ -574,20 +669,11 @@ def search_people_at_organization(org_id, org_name, attorney_firm_domain=None):
                         # Domain validation - only accept contacts whose email domain matches attorney firm domain
                         contact_domain_valid = True
                         if attorney_firm_domain and not is_public_domain(attorney_firm_domain):
-                            contact_email_domain = extract_domain_from_email(email)
-                            if contact_email_domain:
-                                # Check if domains are related (same root domain)
-                                attorney_root = extract_domain_root(attorney_firm_domain) or ""
-                                contact_root = extract_domain_root(contact_email_domain) or ""
-                                
-                                if attorney_root and contact_root:
-                                    if safe_lower(attorney_root) != safe_lower(contact_root):
-                                        contact_domain_valid = False
-                                        print(f"        [{i:2d}/{len(people)}] {enriched_person.get('first_name')} {enriched_person.get('last_name')} - Domain mismatch: {contact_email_domain} vs {attorney_firm_domain}")
-                                elif not attorney_root or not contact_root:
-                                    # If we can't extract roots, consider it invalid
-                                    contact_domain_valid = False
-                                    print(f"        [{i:2d}/{len(people)}] {enriched_person.get('first_name')} {enriched_person.get('last_name')} - Could not extract domain roots for comparison")
+                            # Use the same strict domain validation as update_close_leads.py
+                            if not is_domain_related_strict(email, attorney_firm_domain):
+                                contact_domain_valid = False
+                                contact_email_domain = extract_domain_from_email(email)
+                                print(f"        [{i:2d}/{max_attempts}] {enriched_person.get('first_name')} {enriched_person.get('last_name')} - Domain mismatch: {contact_email_domain} vs {attorney_firm_domain}")
                         
                         if contact_domain_valid:
                             contact = {
@@ -612,7 +698,9 @@ def search_people_at_organization(org_id, org_name, attorney_firm_domain=None):
             except Exception as e:
                 print(f"        [{i:2d}/{len(people)}] ERROR enriching {person.get('first_name')}: {e}")
         
-        print(f"      Successfully unlocked {len(enriched_contacts)}/{len(top_people)} emails")
+        print(f"      Successfully unlocked {len(enriched_contacts)}/{i} emails (target: {target_contacts})")
+        if len(enriched_contacts) > 0:
+            print(f"      CREDITS SAVED: Pre-flight check filtered out non-matching contacts")
         return enriched_contacts
         
     except requests.exceptions.RequestException as e:
@@ -713,6 +801,7 @@ def search_firm_with_retry(lead_data):
                         'winning_query': email_domain,
                         'organizations_found': [best],
                         'selection_reason': reason,
+                        'firm_phone': best.get('phone') if best else None,
                         'contacts_found': len(contacts),
                         'contacts': contacts
                     })
@@ -766,6 +855,7 @@ def search_firm_with_retry(lead_data):
                             'winning_query': domain_root,
                             'organizations_found': [best],
                             'selection_reason': reason,
+                            'firm_phone': best.get('phone') if best else None,
                             'contacts_found': len(contacts),
                             'contacts': contacts
                         })
@@ -828,6 +918,7 @@ def search_firm_with_retry(lead_data):
                         'winning_query': variation,
                             'organizations_found': [best],
                             'selection_reason': reason,
+                            'firm_phone': best.get('phone') if best else None,
                             'contacts_found': len(contacts),
                             'contacts': contacts
                     })
@@ -885,6 +976,7 @@ def search_firm_with_retry(lead_data):
                         'winning_query': domain_root,
                             'organizations_found': [best],
                             'selection_reason': reason,
+                            'firm_phone': best.get('phone') if best else None,
                             'contacts_found': len(contacts),
                             'contacts': contacts
                     })
@@ -937,6 +1029,7 @@ def search_firm_with_retry(lead_data):
                     'winning_query': firm_domain,
                             'organizations_found': [best],
                             'selection_reason': reason,
+                            'firm_phone': best.get('phone') if best else None,
                             'contacts_found': len(contacts),
                             'contacts': contacts
                 })

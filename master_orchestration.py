@@ -301,43 +301,27 @@ def update_close_with_phones(enriched_data, webhook_data):
         return False
         
     try:
-        # Temporarily save both datasets for the update script
-        temp_enriched = 'temp_apollo_results_for_phones.json'
-        temp_webhook = 'temp_webhook_data.json'
+        # Create the files that update_close_leads.py expects
+        # Don't clean them up - leave them for future manual runs
         
-        with open(temp_enriched, 'w', encoding='utf-8') as f:
+        with open('apollo_company_results.json', 'w', encoding='utf-8') as f:
             json.dump(enriched_data, f, indent=2, ensure_ascii=False)
-        with open(temp_webhook, 'w', encoding='utf-8') as f:
+        with open('webhook_data.json', 'w', encoding='utf-8') as f:
             json.dump(webhook_data, f, indent=2, ensure_ascii=False)
-        
-        # Create symlinks for compatibility
-        if os.path.exists('apollo_company_results.json'):
-            os.remove('apollo_company_results.json')
-        if os.path.exists('webhook_data.json'):
-            os.remove('webhook_data.json')
-        os.symlink(temp_enriched, 'apollo_company_results.json')
-        os.symlink(temp_webhook, 'webhook_data.json')
         
         # Run the update script (with phones)
         result = subprocess.run(['python', 'update_close_leads.py'], 
                               input="y\n", text=True, capture_output=True)
         
-        # Clean up temporary files
-        cleanup_files = [
-            'apollo_company_results.json', 'webhook_data.json', 
-            temp_enriched, temp_webhook
-        ]
-        for file in cleanup_files:
-            if os.path.islink(file):
-                os.unlink(file)
-            elif os.path.exists(file):
-                os.remove(file)
+        print(f" STDOUT: {result.stdout}")
+        if result.stderr:
+            print(f" STDERR: {result.stderr}")
                 
         if result.returncode == 0:
             print(" Successfully updated contacts with phone numbers")
             return True
         else:
-            print(" Phone number update failed")
+            print(f" Phone number update failed (return code: {result.returncode})")
             return False
             
     except Exception as e:

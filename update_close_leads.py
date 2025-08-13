@@ -40,7 +40,15 @@ def extract_domain_root(domain):
     return domain.split('.')[0].lower()
 
 def is_domain_related(contact_email, attorney_firm_domain):
-    """Check if contact email domain matches attorney firm domain exactly"""
+    """
+    Check if contact email domain matches attorney firm domain exactly or is a legitimate subdomain.
+    
+    Examples:
+    - john@smithlaw.com vs smithlaw.com → True (exact match)
+    - mail@mail.smithlaw.com vs smithlaw.com → True (legitimate subdomain)
+    - john@smithlaw.org vs smithlaw.com → False (different TLD)
+    - harry@1call.org.uk vs 1call.org → False (different TLD structure)
+    """
     if not contact_email or not attorney_firm_domain:
         return True  # If we don't have domain info, allow the contact
     
@@ -54,11 +62,46 @@ def is_domain_related(contact_email, attorney_firm_domain):
     if contact_domain == attorney_domain:
         return True
     
-    # ONLY allow legitimate subdomain relationships  
-    # Valid: mail.smithlaw.com vs smithlaw.com
-    # Valid: smithlaw.com vs mail.smithlaw.com
-    if contact_domain.endswith('.' + attorney_domain) or attorney_domain.endswith('.' + contact_domain):
-        return True
+    # Extract base domain and TLD for comparison
+    def get_domain_parts(domain):
+        """Split domain into base name and TLD parts"""
+        parts = domain.split('.')
+        if len(parts) < 2:
+            return None, None
+        
+        # Handle common TLD patterns
+        if len(parts) >= 3 and parts[-2] in ['co', 'com', 'org', 'net', 'gov', 'edu']:
+            # e.g., domain.co.uk, domain.org.uk
+            return '.'.join(parts[:-2]), '.'.join(parts[-2:])
+        else:
+            # e.g., domain.com, domain.org
+            return '.'.join(parts[:-1]), parts[-1]
+    
+    contact_base, contact_tld = get_domain_parts(contact_domain)
+    attorney_base, attorney_tld = get_domain_parts(attorney_domain)
+    
+    # Both domains must have the same base domain and TLD structure
+    if not (contact_base and attorney_base and contact_tld and attorney_tld):
+        return False
+    
+    if contact_tld != attorney_tld:
+        return False  # Different TLD structures (e.g., .org vs .org.uk)
+    
+    if contact_base == attorney_base:
+        return True  # Same base domain and TLD
+    
+    # Check for legitimate subdomain relationships
+    # Valid: mail.smithlaw vs smithlaw (with same TLD)
+    if contact_base.endswith('.' + attorney_base):
+        subdomain = contact_base[:-len('.' + attorney_base)]
+        # Only allow simple subdomains (not complex nested ones)
+        if '.' not in subdomain and len(subdomain) <= 10:
+            return True
+    
+    if attorney_base.endswith('.' + contact_base):
+        subdomain = attorney_base[:-len('.' + contact_base)]
+        if '.' not in subdomain and len(subdomain) <= 10:
+            return True
     
     return False
 
@@ -178,6 +221,48 @@ def update_existing_contact(contact_id, lawyer_data, phone_data=None):
         print(f"    [ERROR] Error updating {lawyer_data['name']}: {e}")
         return False
 
+def add_main_office_contact(lead_id, firm_name, firm_phone, existing_contacts=None):
+    """Create a Main Office contact for the firm's main phone number"""
+    if not firm_phone:
+        return None
+        
+    contact_name = f"{firm_name} - Main Office"
+    
+    # Check if Main Office contact already exists
+    if existing_contacts:
+        for contact in existing_contacts:
+            if contact.get('name', '').endswith('- Main Office'):
+                print(f"    [EXISTS] Main Office contact already exists")
+                return contact['id']
+    
+    url = "https://api.close.com/api/v1/contact/"
+    headers = {
+        'Authorization': get_close_auth_header(),
+        'Content-Type': 'application/json'
+    }
+    
+    # Create Main Office contact payload
+    payload = {
+        "lead_id": lead_id,
+        "name": contact_name,
+        "title": "Main Office",
+        "phones": [{
+            "phone": firm_phone,
+            "type": "office"
+        }]
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        
+        print(f"    [CREATED] Main Office contact: {firm_phone}")
+        return response.json()['id']
+        
+    except Exception as e:
+        print(f"    [ERROR] Failed to create Main Office contact: {e}")
+        return None
+
 def add_lawyer_to_lead(lead_id, client_name, firm_name, lawyer_data, phone_data=None, existing_contacts=None, attorney_firm_domain=None):
     """Add a lawyer as a contact or update existing contact with new info"""
     
@@ -281,7 +366,7 @@ def load_phone_data():
 
 def process_company_results():
     """Process apollo_company_results.json and update Close leads"""
-    
+  
     # Load company results
     try:
         with open('apollo_company_results.json', 'r', encoding='utf-8') as f:
@@ -368,21 +453,34 @@ def process_company_results():
         client_name = result['client_name']
         firm_name = result['firm_name']
         attorney_firm_domain = result.get('firm_domain')  # Get original attorney firm domain
+        firm_phone = result.get('firm_phone')  # Get firm main phone number
         contacts = result.get('contacts', [])
         
         print(f"\n{client_name} -> {firm_name} ({len(contacts)} lawyers)")
         print(f"Lead ID: {lead_id}")
         if attorney_firm_domain:
             print(f"Attorney domain: {attorney_firm_domain}")
-        
-        if not contacts:
-            print("  No contacts to add")
-            continue
+        if firm_phone:
+            print(f"Firm phone: {firm_phone}")
         
         # Get existing contacts once for this lead
         existing_contacts = check_existing_contacts(lead_id)
         if existing_contacts:
             print(f"  Found {len(existing_contacts)} existing contacts on this lead")
+        
+        # Create Main Office contact if we have a firm phone number AND found valid contacts
+        # Conservative approach: only add firm phone if we found domain-matching people
+        if firm_phone and contacts:
+            print(f"  Creating Main Office contact...")
+            main_office_id = add_main_office_contact(lead_id, firm_name, firm_phone, existing_contacts)
+            if main_office_id:
+                total_contacts_added += 1
+        elif firm_phone and not contacts:
+            print(f"  Skipping Main Office contact - no valid domain-matching contacts found")
+        
+        if not contacts:
+            print("  No individual contacts to add")
+            continue
         
         for lawyer in contacts:
             # Get phone data for this lawyer if available and requested

@@ -103,19 +103,21 @@ def test_webhook_server(ngrok_url):
         return False
     
     try:
-        # Test mock webhook
-        print("\n2. Mock webhook test...")
-        response = requests.post(f"{ngrok_url}/test-webhook", timeout=10)
+        # Test Apollo webhook endpoint (the real one)
+        print("\n2. Apollo webhook endpoint test...")
+        # Send a minimal test payload to the actual endpoint
+        test_payload = {"test": True, "message": "Connection test"}
+        response = requests.post(f"{ngrok_url}/apollo-webhook", json=test_payload, timeout=10)
         print(f"   Status: {response.status_code}")
         if response.status_code == 200:
-            print("   [OK] Mock webhook successful")
+            print("   [OK] Apollo webhook endpoint accessible")
             return True
         else:
-            print("   [ERROR] Mock webhook failed")
+            print("   [ERROR] Apollo webhook endpoint failed")
             return False
             
     except requests.exceptions.RequestException as e:
-        print(f"   [ERROR] Mock webhook failed: {e}")
+        print(f"   [ERROR] Apollo webhook test failed: {e}")
         return False
 
 def extract_contacts_for_enrichment(data):
@@ -324,7 +326,14 @@ def main():
             print("- NGROK_URL in .env matches your current ngrok URL")
             
             if choice == '3':
-                proceed = input("\nProceed with enrichment anyway? (y/n): ").lower()
+                # Check if running in non-interactive mode (like from orchestrator)
+                import sys
+                if not sys.stdin.isatty():
+                    print("\nRunning in non-interactive mode, proceeding with enrichment...")
+                    proceed = "y"
+                else:
+                    proceed = input("\nProceed with enrichment anyway? (y/n): ").lower()
+                
                 if proceed != 'y':
                     print("Aborted.")
                     return
