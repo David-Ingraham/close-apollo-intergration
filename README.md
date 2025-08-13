@@ -101,14 +101,13 @@ project_root/
 ### Primary Filtering Criteria
 
 #### 1. Firm Name Validation
-- **Required:** Lead must have a law firm name in custom fields
-- **Sources:** Multiple custom field mappings for firm names
-- **Rejection:** Leads without firm names are skipped
+- **Required:** Lead must have a law firm email and not personal
+- **Sources:** Multiple custom field mappings for firm names. Email domain prioritized, the Law office, then attorney name (could be filled by lead as name of lawyer or name of firm)
+
 
 #### 2. Email Domain Analysis
 - **Personal Domains:** Gmail, Yahoo, Hotmail, etc. are flagged
-- **Validation:** Professional email domains indicate legitimate law firms
-- **Cross-Reference:** Domain must match identified firm or be professional
+- **Cross-Reference:** Domain must match attoney email given by lead
 
 #### 3. Search Strategy Determination
 The system determines search approach based on available data:
@@ -337,3 +336,4 @@ python update_close_leads.py    # Update Close CRM
 - Webhook health monitoring and alerts
 
 This system provides a robust, automated solution for enriching Close CRM leads with comprehensive law firm contact information while maintaining cost control and data quality.
+
