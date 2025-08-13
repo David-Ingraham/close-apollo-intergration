@@ -141,47 +141,63 @@ def get_leads_data():
         print(f" Error getting leads data: {e}")
         return None
 
-def enrich_companies_and_people(leads_data):
+def enrich_companies_and_people(leads_data, webhook_url=None):
     """Enrich companies and people data using Apollo"""
     print_header("STEP 2: COMPANY & PEOPLE ENRICHMENT") 
     print("Running Apollo enrichment to get company and people data...")
+    print("NEW: Also enriching original attorney emails for direct phone numbers...")
     
     if not leads_data or not leads_data.get('leads'):
         print(" No leads data to process")
         return None
         
     try:
+        # Get webhook URL from environment if not provided
+        if not webhook_url:
+            webhook_url = os.getenv('WEBHOOK_URL')
+            if webhook_url:
+                print(f"Using webhook URL from environment: {webhook_url}")
+            else:
+                print("No webhook URL provided - phone requests will be immediate (not async)")
+        
         # Process leads that need enrichment
         leads_to_process = [lead for lead in leads_data['leads'] if lead.get('needs_apollo_enrichment', False)]
-        print(f"Processing {len(leads_to_process)} leads (company lookup only)...")
+        print(f"Processing {len(leads_to_process)} leads (company + attorney enrichment)...")
         
         results = []
         processed_count = 0
         successful_searches = 0
+        attorney_enrichments = 0
         
         for lead in leads_to_process:
             processed_count += 1
-            print(f"\nSearching firm for: {lead.get('client_name')} -> {lead.get('attorney_firm')}")
+            print(f"\nProcessing lead: {lead.get('client_name')} -> {lead.get('attorney_firm')}")
             
-            # Call apollo_enrich function directly
-            search_result = apollo_enrich.search_firm_with_retry(lead)
+            # Call apollo_enrich function with webhook URL for attorney enrichment
+            search_result = apollo_enrich.search_firm_with_retry(lead, webhook_url)
             results.append(search_result)
             
             if search_result.get('search_successful'):
                 successful_searches += 1
+            
+            if search_result.get('attorney_contact'):
+                attorney_enrichments += 1
         
         # Package the enriched data
         enriched_package = {
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'mode': 'companies_only',
+            'mode': 'companies_and_attorneys',
             'total_leads_processed': processed_count,
             'successful_searches': successful_searches,
+            'attorney_enrichments': attorney_enrichments,
             'success_rate': f"{(successful_searches/processed_count)*100:.1f}%" if processed_count else "0%",
+            'attorney_success_rate': f"{(attorney_enrichments/processed_count)*100:.1f}%" if processed_count else "0%",
             'search_results': results
         }
         
-        print(f"\nCompany enrichment complete:")
-        print(f"Processed: {processed_count} | Success: {successful_searches} | Rate: {enriched_package['success_rate']}")
+        print(f"\nEnrichment complete:")
+        print(f"Processed: {processed_count} | Firm Success: {successful_searches} | Attorney Success: {attorney_enrichments}")
+        print(f"Firm Rate: {enriched_package['success_rate']} | Attorney Rate: {enriched_package['attorney_success_rate']}")
         
         return enriched_package
         
@@ -344,7 +360,9 @@ def save_comprehensive_results(leads_data, enriched_data, webhook_data, timestam
             'summary': {
                 'total_leads_processed': enriched_data.get('total_leads_processed', 0) if enriched_data else 0,
                 'successful_firm_matches': enriched_data.get('successful_searches', 0) if enriched_data else 0,
-                'success_rate': enriched_data.get('success_rate', '0%') if enriched_data else '0%',
+                'attorney_enrichments': enriched_data.get('attorney_enrichments', 0) if enriched_data else 0,
+                'firm_success_rate': enriched_data.get('success_rate', '0%') if enriched_data else '0%',
+                'attorney_success_rate': enriched_data.get('attorney_success_rate', '0%') if enriched_data else '0%',
                 'phone_requests_sent': 0,
                 'phone_responses_received': len(webhook_data) if webhook_data else 0,
                 'total_phone_numbers_found': sum(
@@ -379,6 +397,11 @@ def save_comprehensive_results(leads_data, enriched_data, webhook_data, timestam
                         'attorney_firm': result.get('firm_name'),
                         'attorney_email': result.get('attorney_email'),
                         'firm_domain': result.get('firm_domain')
+                    },
+                    'attorney_enrichment': {
+                        'enrichment_successful': result.get('attorney_contact') is not None,
+                        'enrichment_status': result.get('attorney_enrichment_status', 'not_attempted'),
+                        'attorney_contact': result.get('attorney_contact')
                     },
                     'apollo_search': {
                         'search_successful': result.get('search_successful', False),
@@ -525,8 +548,9 @@ def main():
             print(" Pipeline failed: Could not get leads data")
             return
         
-        # Step 2: Enrich companies and people
-        enriched_data = enrich_companies_and_people(leads_data)
+        # Step 2: Enrich companies and people (including attorney email enrichment)
+        webhook_url = os.getenv('WEBHOOK_URL')  # Get webhook URL for attorney phone requests
+        enriched_data = enrich_companies_and_people(leads_data, webhook_url)
         if not enriched_data:
             print(" Pipeline failed: Could not enrich data")
             return

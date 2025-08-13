@@ -131,8 +131,21 @@ def extract_contacts_for_enrichment(data):
         lead_id = result['lead_id']
         client_name = result['client_name']
         firm_name = result['firm_name']
-        contacts = result.get('contacts', [])
         
+        # NEW: Process attorney contact first (if exists)
+        attorney_contact = result.get('attorney_contact')
+        if attorney_contact and attorney_contact.get('email') and attorney_contact.get('person_id'):
+            enrichment_targets.append({
+                'lead_id': lead_id,
+                'client_name': client_name,
+                'firm_name': firm_name,
+                'contact': attorney_contact,
+                'contact_type': 'attorney',  # Mark as attorney
+                'request_id': f"{lead_id}_attorney"
+            })
+        
+        # Process firm contacts
+        contacts = result.get('contacts', [])
         for i, contact in enumerate(contacts):
             # Only process contacts with email and person_id
             if contact.get('email') and contact.get('person_id'):
@@ -141,6 +154,7 @@ def extract_contacts_for_enrichment(data):
                     'client_name': client_name,
                     'firm_name': firm_name,
                     'contact': contact,
+                    'contact_type': 'firm',  # Mark as firm contact
                     'request_id': f"{lead_id}_{i+1}"
                 })
     
@@ -224,6 +238,8 @@ def process_all_enrichments(data, webhook_url):
     
     for i, target in enumerate(targets, 1):
         firm = target['firm_name']
+        contact_type = target.get('contact_type', 'unknown')
+        contact_name = target['contact']['name']
         
         # Print firm header when we switch firms
         if firm != current_firm:
@@ -232,7 +248,9 @@ def process_all_enrichments(data, webhook_url):
             print(f"\n{firm}:")
             current_firm = firm
         
-        print(f"   [{i:2d}/{len(targets)}] ", end="")
+        # Show contact type in logging
+        type_label = "[ATTORNEY]" if contact_type == 'attorney' else "[FIRM]"
+        print(f"   [{i:2d}/{len(targets)}] {type_label} {contact_name} - ", end="")
         
         if send_phone_enrichment_request(target, webhook_url):
             success_count += 1
@@ -302,14 +320,31 @@ def main():
         for result in data['search_results']:
             if result.get('search_successful'):
                 print(f"\n{result['client_name']} -> {result['firm_name']}")
-                for i, contact in enumerate(result.get('contacts', []), 1):
-                    email = contact.get('email', 'No email')
-                    person_id = contact.get('person_id', 'No ID')
+                
+                contact_num = 1
+                
+                # Show attorney contact first
+                attorney_contact = result.get('attorney_contact')
+                if attorney_contact:
+                    email = attorney_contact.get('email', 'No email')
+                    person_id = attorney_contact.get('person_id', 'No ID')
                     enrichable = "yes" if email and person_id else "no"
-                    print(f"  {i:2d}. {enrichable} {contact['name']} ({contact.get('title', 'No title')})")
+                    print(f"  {contact_num:2d}. [ATTORNEY] {enrichable} {attorney_contact['name']} ({attorney_contact.get('title', 'No title')})")
                     print(f"       Email: {email}")
                     if not person_id:
                         print(f"       Missing person_id - cannot enrich")
+                    contact_num += 1
+                
+                # Show firm contacts
+                for contact in result.get('contacts', []):
+                    email = contact.get('email', 'No email')
+                    person_id = contact.get('person_id', 'No ID')
+                    enrichable = "yes" if email and person_id else "no"
+                    print(f"  {contact_num:2d}. [FIRM] {enrichable} {contact['name']} ({contact.get('title', 'No title')})")
+                    print(f"       Email: {email}")
+                    if not person_id:
+                        print(f"       Missing person_id - cannot enrich")
+                    contact_num += 1
         return
     
     webhook_ok = True

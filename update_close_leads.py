@@ -378,7 +378,13 @@ def process_company_results():
     
     print("UPDATING CLOSE CRM LEADS WITH APOLLO DATA")
     print("=" * 60)
-    print(f"Processing {data['successful_searches']} successful firm matches...")
+    print(f"Processing {data.get('successful_searches', 0)} successful firm matches...")
+    
+    # Show attorney enrichment stats if available
+    if data.get('attorney_enrichments'):
+        print(f"Also processing {data.get('attorney_enrichments', 0)} attorney enrichments...")
+    
+    print(f"Data mode: {data.get('mode', 'unknown')}")
     
     # Check for phone data and prompt user
     phone_data = {}
@@ -439,6 +445,8 @@ def process_company_results():
         print("   Run get_apollo_nums.py and wait for webhook responses to get phone numbers")
     
     total_contacts_added = 0
+    attorney_contacts_added = 0
+    firm_contacts_added = 0
     
     print(f"\n{'=' * 60}")
     print("STARTING CLOSE CRM UPDATES")
@@ -455,13 +463,29 @@ def process_company_results():
         attorney_firm_domain = result.get('firm_domain')  # Get original attorney firm domain
         firm_phone = result.get('firm_phone')  # Get firm main phone number
         contacts = result.get('contacts', [])
+        attorney_contact = result.get('attorney_contact')  # NEW: Get original attorney contact
         
-        print(f"\n{client_name} -> {firm_name} ({len(contacts)} lawyers)")
+        # Prepare contact list including original attorney
+        all_contacts = []
+        
+        # Add original attorney if enrichment was successful
+        if attorney_contact:
+            all_contacts.append(attorney_contact)
+        
+        # Add firm contacts
+        all_contacts.extend(contacts)
+        
+        attorney_count = 1 if attorney_contact else 0
+        firm_contact_count = len(contacts)
+        total_contacts = len(all_contacts)
+        
+        print(f"\n{client_name} -> {firm_name}")
         print(f"Lead ID: {lead_id}")
         if attorney_firm_domain:
             print(f"Attorney domain: {attorney_firm_domain}")
         if firm_phone:
             print(f"Firm phone: {firm_phone}")
+        print(f"Contacts: {attorney_count} attorney + {firm_contact_count} firm = {total_contacts} total")
         
         # Get existing contacts once for this lead
         existing_contacts = check_existing_contacts(lead_id)
@@ -470,19 +494,23 @@ def process_company_results():
         
         # Create Main Office contact if we have a firm phone number AND found valid contacts
         # Conservative approach: only add firm phone if we found domain-matching people
-        if firm_phone and contacts:
+        if firm_phone and all_contacts:
             print(f"  Creating Main Office contact...")
             main_office_id = add_main_office_contact(lead_id, firm_name, firm_phone, existing_contacts)
             if main_office_id:
                 total_contacts_added += 1
-        elif firm_phone and not contacts:
-            print(f"  Skipping Main Office contact - no valid domain-matching contacts found")
+        elif firm_phone and not all_contacts:
+            print(f"  Skipping Main Office contact - no valid contacts found")
         
-        if not contacts:
+        if not all_contacts:
             print("  No individual contacts to add")
             continue
         
-        for lawyer in contacts:
+        # Process all contacts (attorney + firm contacts)
+        for i, lawyer in enumerate(all_contacts):
+            # Identify if this is the original attorney
+            is_original_attorney = (i == 0 and attorney_contact is not None)
+            contact_type = "attorney" if is_original_attorney else "firm contact"
             # Get phone data for this lawyer if available and requested
             lawyer_phone_data = None
             if include_phones:
@@ -491,12 +519,21 @@ def process_company_results():
                 
                 if lawyer_phone_data:
                     phone_count = len(lawyer_phone_data.get('phone_numbers', []))
-                    print(f"    [PHONE] Found {phone_count} phone numbers for {lawyer['name']}")
+                    print(f"    [PHONE] Found {phone_count} phone numbers for {lawyer['name']} ({contact_type})")
+            
+            # Special handling for original attorney
+            if is_original_attorney:
+                print(f"    [ATTORNEY] Processing original attorney: {lawyer.get('name')}")
             
             # Add/update lawyer in Close lead with domain validation
             contact_id = add_lawyer_to_lead(lead_id, client_name, firm_name, lawyer, lawyer_phone_data, existing_contacts, attorney_firm_domain)
             if contact_id:
                 total_contacts_added += 1
+                if is_original_attorney:
+                    attorney_contacts_added += 1
+                    print(f"    [ATTORNEY] Successfully added original attorney contact")
+                else:
+                    firm_contacts_added += 1
             
             # Rate limiting
             time.sleep(0.5)
@@ -504,6 +541,8 @@ def process_company_results():
     print(f"\n{'=' * 60}")
     print(f"CLOSE CRM UPDATE COMPLETE")
     print(f"Total contacts added: {total_contacts_added}")
+    print(f"  - Attorney contacts: {attorney_contacts_added}")
+    print(f"  - Firm contacts: {firm_contacts_added}")
     if include_phones:
         print(f"Included phone numbers: [OK]")
     else:
