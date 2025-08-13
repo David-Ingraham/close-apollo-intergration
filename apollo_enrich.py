@@ -638,8 +638,8 @@ def search_people_at_organization(org_id, org_name, attorney_firm_domain=None):
         # Step 2: Keep searching through people until we find enough WITH emails
         enrich_url = "https://api.apollo.io/api/v1/people/match"
         enriched_contacts = []
-        target_contacts = 2  # We want to find 2 people with emails
-        max_attempts = min(len(all_legal_people), 10)  # Don't try more than 10 people
+        target_contacts = 6  # We want to find 6 people with emails
+        max_attempts = min(len(all_legal_people), 20)  # Don't try more than 20 people
         
         print(f"      Unlocking emails for up to {max_attempts} contacts...")
         
