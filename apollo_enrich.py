@@ -4,6 +4,7 @@ import re
 import time
 import requests
 import difflib
+from urllib.parse import urlparse
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -326,7 +327,6 @@ def search_apollo_organization(query, page=1, per_page=100, domains=None):
             return data
         elif data.get("organizations"):
             return data
-
     # Domain search (exact) if provided - but this often returns irrelevant results
     if domains:
         print(f"    WARNING: Domain searches often return irrelevant results")
@@ -434,7 +434,7 @@ def is_law_firm_by_industry(org):
     keywords = org.get('keywords', [])
     if keywords:
         keywords_text = ' '.join(safe_lower(str(kw)) for kw in keywords)
-        if any(term in keywords_text for term in ['law', 'legal', 'attorney', 'counsel', 'litigation', 'paralegal']):
+        if any(term in keywords_text for term in ['law', 'legal', 'attorney', 'counsel', 'litigation', 'paralegal', "law firm", "law office", "law offices"]):
             return True
     
     # For accounts format, be more permissive since industry data is often missing
@@ -818,6 +818,134 @@ def search_people_with_fallback(candidates, firm_name, attorney_firm_domain=None
     
     return None, [], "no_candidates"
 
+def follow_domain_redirects(original_domain):
+    """
+    Follow redirects from original domain to find final destination
+    Returns: dict with redirect info or None if failed
+    """
+    if not original_domain:
+        return None
+        
+    # Try both http and https
+    for protocol in ['https', 'http']:
+        url = f"{protocol}://{original_domain}"
+        
+        try:
+            # Create session with redirect tracking
+            session = requests.Session()
+            session.max_redirects = 5
+            
+            # Make request with timeout
+            response = session.get(url, timeout=10, allow_redirects=True)
+            
+            # Extract final domain from response URL
+            final_url = response.url
+            final_domain = urlparse(final_url).netloc.lower()
+            
+            # Clean up domain (remove www prefix)
+            if final_domain.startswith('www.'):
+                final_domain = final_domain[4:]
+                
+            # Skip if no redirect happened or same domain
+            if final_domain == original_domain.lower():
+                continue
+                
+            print(f"    Domain redirect found: {original_domain} → {final_domain}")
+            
+            return {
+                'original_domain': original_domain,
+                'final_domain': final_domain,
+                'final_url': final_url,
+                'success': True
+            }
+            
+        except requests.RequestException as e:
+            print(f"    Redirect check failed for {protocol}://{original_domain}: {str(e)}")
+            continue
+    
+    return None
+
+def search_by_domain_redirect(attorney_email, firm_name):
+    """
+    Backup search strategy using domain redirects
+    Returns: dict with organizations list (same format as Apollo API) or None
+    """
+    if not attorney_email or '@' not in attorney_email:
+        return None
+        
+    # Extract domain from attorney email
+    original_domain = extract_domain_from_email(attorney_email)
+    if not original_domain or is_public_domain(original_domain):
+        return None
+    
+    print(f"  STRATEGY REDIRECT: Checking domain redirects for {original_domain}")
+    
+    # Follow redirects to find final domain
+    redirect_result = follow_domain_redirects(original_domain)
+    
+    if not redirect_result:
+        print(f"    No redirects found for {original_domain}")
+        return None
+        
+    final_domain = redirect_result['final_domain']
+    print(f"    Redirect found: {original_domain} → {final_domain}")
+    
+    # Search Apollo using the final domain
+    print(f"    Searching Apollo for final domain: {final_domain}")
+    api_response = search_apollo_organization(final_domain, page=1, per_page=100)
+    
+    if not api_response or not api_response.get('organizations'):
+        print(f"    No organizations found for final domain: {final_domain}")
+        return None
+    
+    organizations = api_response['organizations']
+    print(f"    Found {len(organizations)} organizations for final domain")
+    
+    # Validate results - check if any companies have original domain in their email domains
+    valid_companies = []
+    for org in organizations:
+        if validate_redirect_relationship(org, original_domain, final_domain):
+            valid_companies.append(org)
+    
+    if valid_companies:
+        print(f"    Found {len(valid_companies)} valid companies with domain relationship")
+        return {
+            'organizations': valid_companies,
+            'search_method': 'domain_redirect',
+            'redirect_info': redirect_result
+        }
+    else:
+        print(f"    No companies found with valid domain relationship to {original_domain}")
+        return None
+
+def validate_redirect_relationship(company, original_domain, final_domain):
+    """
+    Check if company is legitimately related to original domain
+    """
+    if not company:
+        return False
+        
+    # Check if company has original domain in their website or primary domain
+    company_website = safe_lower(company.get('website_url', ''))
+    company_primary = safe_lower(company.get('primary_domain', ''))
+    
+    # Check for original domain in website URL
+    if original_domain.lower() in company_website:
+        return True
+        
+    # Check for original domain in primary domain
+    if original_domain.lower() == company_primary:
+        return True
+        
+    # Check if final domain matches company domain
+    if final_domain.lower() == company_primary:
+        return True
+        
+    if final_domain.lower() in company_website:
+        return True
+    
+    return False
+
 def search_firm_with_retry(lead_data, webhook_url=None):
     result = {
         'lead_id': lead_data.get('lead_id'),
@@ -837,8 +965,20 @@ def search_firm_with_retry(lead_data, webhook_url=None):
     firm_name = lead_data.get('attorney_firm')
     firm_domain = safe_lower(lead_data.get('firm_domain') or '')
     attorney_email = lead_data.get('attorney_email')
+    ai_website = lead_data.get('firm_website')  # AI-suggested website
+    ai_recovery = lead_data.get('ai_recovery')  # AI recovery metadata
     
     print(f"    Input data: firm_name='{firm_name}', attorney_email='{attorney_email}'")
+    
+    # Show AI recovery information if present
+    if ai_recovery:
+        print(f"     AI-RECOVERED LEAD:")
+        print(f"       Original skip reason: {ai_recovery.get('original_skip_reason', 'unknown')}")
+        print(f"       AI classification: {ai_recovery.get('ai_classification', 'unknown')}")
+        print(f"       AI confidence: {ai_recovery.get('ai_confidence', 'unknown')}/10")
+        if ai_website:
+            print(f"       AI suggested website: {ai_website}")
+        print(f"        This lead was rescued by AI and will now be enriched!")
     
     # NEW: Enrich the attorney's email to get their direct phone number
     print(f"\n  ATTORNEY ENRICHMENT: Getting direct contact info for {attorney_email}")
@@ -969,6 +1109,83 @@ def search_firm_with_retry(lead_data, webhook_url=None):
                         attempt['success'] = True
                         result['attempts'].append(attempt)
                         return result
+            
+            result['attempts'].append(attempt)
+    
+    # STRATEGY 1.5: AI Website Search (if AI suggested a website)
+    if ai_website and ai_website.lower() != 'unknown':
+        print(f"  STRATEGY 1.5: AI-suggested website search")
+        print(f"    AI suggested website: {ai_website}")
+        
+        # Clean up the URL (remove https://, www., etc.)
+        # Handle cases where AI gives multiple URLs or explanatory text
+        clean_website = ai_website.replace('https://', '').replace('http://', '').replace('www.', '')
+        
+        # If AI gives multiple URLs, take the first one
+        if ' or ' in clean_website:
+            clean_website = clean_website.split(' or ')[0].strip()
+        if ' (' in clean_website:
+            clean_website = clean_website.split(' (')[0].strip()
+        if ' likely' in clean_website.lower():
+            clean_website = clean_website.split(' likely')[0].strip()
+        
+        # Remove trailing slash and any extra text
+        if clean_website.endswith('/'):
+            clean_website = clean_website[:-1]
+        
+        # Validate it looks like a domain
+        if ' ' in clean_website or len(clean_website.split('.')) < 2:
+            print(f"    WARNING: AI suggested invalid URL format: '{ai_website}'")
+            print(f"    Skipping AI website search due to invalid format")
+        else:
+            print(f"    Cleaned website: '{clean_website}'")
+            print(f"  Attempt 1.5A: AI website search '{clean_website}'")
+            time.sleep(1)
+            api_response = search_apollo_organization(clean_website, page=1, per_page=100)
+            attempt = {'strategy': 'ai_website', 'query': clean_website, 'success': False, 'organizations_count': 0}
+            
+            if api_response and api_response.get('organizations'):
+                orgs = api_response['organizations']
+                attempt['organizations_count'] = len(orgs)
+                contacts = []  # Initialize contacts
+                law_firms = [org for org in orgs if is_law_firm_by_industry(org)]
+                print(f"    Found {len(orgs)} total organizations, {len(law_firms)} law firms")
+                
+                # Initialize variables
+                best, reason = None, "no_candidates"
+                
+                if law_firms:
+                    # For AI suggestions, we're more trusting since AI analyzed the lead
+                    firm_name = lead_data.get('attorney_firm')
+                    attorney_email = lead_data.get('attorney_email')
+                    best, reason = choose_best_org(firm_name, clean_website, law_firms, attorney_email)
+                    
+                    if best:
+                        confidence = ai_recovery.get('ai_confidence', 'unknown') if ai_recovery else 'unknown'
+                        print(f"    AI WEBSITE SUCCESS: {best.get('name')} (confidence: {confidence}/10)")
+                        
+                        # Get people for this organization
+                        contacts = search_people_with_fallback([best], firm_name, clean_website)
+                        
+                        # Store result and return early
+                        result.update({
+                            'search_successful': True,
+                            'winning_strategy': 'ai_website',
+                            'winning_query': clean_website,
+                            'selected_organization': best,
+                            'contacts': contacts,
+                            'firm_phone': best.get('phone'),  # Company main phone
+                            'match_score': 'ai_suggested'
+                        })
+                        attempt['success'] = True
+                        result['attempts'].append(attempt)
+                        return result
+                    else:
+                        print(f"    No suitable law firms found with AI website: {reason}")
+                else:
+                    print(f"    No law firms found using AI suggested website")
+            else:
+                print(f"    No organizations found with AI suggested website")
             
             result['attempts'].append(attempt)
     
@@ -1134,11 +1351,11 @@ def search_firm_with_retry(lead_data, webhook_url=None):
                     'search_successful': True,
                     'winning_strategy': 'domain_exact',
                     'winning_query': firm_domain,
-                            'organizations_found': [best],
-                            'selection_reason': reason,
-                            'firm_phone': best.get('phone') if best else None,
-                            'contacts_found': len(contacts),
-                            'contacts': contacts
+                    'organizations_found': [best],
+                    'selection_reason': reason,
+                    'firm_phone': best.get('phone') if best else None,
+                    'contacts_found': len(contacts),
+                    'contacts': contacts
                 })
                 attempt['success'] = True
                 result['attempts'].append(attempt)
@@ -1155,6 +1372,64 @@ def search_firm_with_retry(lead_data, webhook_url=None):
     if not firm_domain or is_public_domain(firm_domain):
         if firm_domain:
             print(f"  Skipping domain fallback for public email domain: '{firm_domain}'")
+
+    # FINAL FALLBACK: Domain redirect search
+    if attorney_email and '@' in attorney_email and not is_public_domain(extract_domain_from_email(attorney_email)):
+        print(f"  FINAL FALLBACK: Trying domain redirect search...")
+        redirect_data = search_by_domain_redirect(attorney_email, firm_name)
+        
+        if redirect_data and redirect_data.get('organizations'):
+            orgs = redirect_data['organizations']
+            attempt = {
+                'strategy': 'domain_redirect', 
+                'query': f"{extract_domain_from_email(attorney_email)} → {redirect_data['redirect_info']['final_domain']}", 
+                'success': False, 
+                'organizations_count': len(orgs)
+            }
+            
+            # Use existing filtering and selection logic
+            law_firms = [org for org in orgs if is_law_firm_by_industry(org)]
+            
+            # If no law firms found by industry, use all organizations (redirect is strong signal)
+            if not law_firms and orgs:
+                law_firms = orgs
+                print(f"    Found {len(orgs)} total orgs, using all (redirect is strong signal)")
+            else:
+                print(f"    Found {len(orgs)} total orgs, {len(law_firms)} law firms by industry")
+            
+            # Initialize variables
+            best, reason = None, "no_candidates"
+            contacts = []
+            
+            if law_firms:
+                ranked = rank_and_dedupe_organizations(law_firms, input_query=firm_name, input_domain=firm_domain)
+                best, reason = choose_best_org(firm_name, firm_domain, ranked, attorney_email)
+                
+                if best:
+                    safe_name = best.get('name', 'Unknown').encode('ascii', 'ignore').decode('ascii')
+                    print(f"    SUCCESS! Selected: {safe_name} ({reason}) - DOMAIN REDIRECT")
+                    
+                    org, contacts, selection_reason = search_people_with_fallback(ranked, firm_name, firm_domain)
+                    if org:
+                        safe_name = org.get('name', 'Unknown').encode('ascii', 'ignore').decode('ascii')
+                        print(f"    FINAL SELECTION: {safe_name} ({selection_reason})")
+                    
+                    result.update({
+                        'search_successful': True,
+                        'winning_strategy': 'domain_redirect',
+                        'winning_query': redirect_data['redirect_info']['final_domain'],
+                        'organizations_found': [best],
+                        'selection_reason': f"redirect_{reason}",
+                        'firm_phone': best.get('phone') if best else None,
+                        'contacts_found': len(contacts),
+                        'contacts': contacts,
+                        'redirect_info': redirect_data['redirect_info']
+                    })
+                    attempt['success'] = True
+                    result['attempts'].append(attempt)
+                    return result
+            
+            result['attempts'].append(attempt)
 
     print(f"  FAILED: No organizations found for {firm_name}")
     return result

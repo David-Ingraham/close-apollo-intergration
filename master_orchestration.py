@@ -9,6 +9,7 @@ from datetime import datetime
 import get_lawyer_contacts
 import apollo_enrich
 import update_close_leads
+import ai_lead_recovery
 
 def print_header(title):
     """Print a formatted header"""
@@ -57,7 +58,7 @@ def check_prerequisites():
     from dotenv import load_dotenv
     load_dotenv()
     
-    required_env = ['CLOSE_API_KEY', 'APOLLO_API_KEY', 'NGROK_URL']
+    required_env = ['CLOSE_API_KEY', 'APOLLO_API_KEY', 'NGROK_URL', 'GROQ_API_KEY']
     for env_var in required_env:
         if os.getenv(env_var):
             print(f" {env_var} set")
@@ -480,6 +481,7 @@ def main():
     """Run the complete Apollo-Close integration pipeline"""
     print_header("APOLLO-CLOSE INTEGRATION PIPELINE")
     print("This script will run the complete enrichment and update process")
+    print("NEW: Includes AI-powered lead recovery using Groq LLM")
     print("Make sure webhook_server.py and ngrok are running before starting!")
     
     # Check prerequisites
@@ -516,6 +518,7 @@ def main():
     # Show what will happen
     print(f"\nThis will:")
     print("1. Get new leads from Close CRM and find law firms")
+    print("1.5. AI Recovery: Use LLM to recover skipped leads with firm names")
     print("2. Enrich companies and people data from Apollo")
     print("3. Save comprehensive results to timestamped file")
     if update_close:
@@ -547,6 +550,14 @@ def main():
         if not leads_data:
             print(" Pipeline failed: Could not get leads data")
             return
+        
+        # Step 1.5: AI Lead Recovery (recover skipped leads using LLM)
+        ai_recovered_leads = ai_lead_recovery.process_ai_recovery(leads_data, min_confidence=7)
+        if ai_recovered_leads:
+            leads_data = ai_lead_recovery.merge_recovered_leads(leads_data, ai_recovered_leads)
+            print(f" AI Recovery complete: {len(ai_recovered_leads)} leads recovered for enrichment")
+        else:
+            print("ℹ  AI Recovery: No additional leads recovered")
         
         # Step 2: Enrich companies and people (including attorney email enrichment)
         webhook_url = os.getenv('WEBHOOK_URL')  # Get webhook URL for attorney phone requests

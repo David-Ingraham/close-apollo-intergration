@@ -1,8 +1,162 @@
-currenlty working on making usre new contacts have matching email root domai if one exists for that update_close_leads
+ caching of already acessed emails 
+ 
+ 
+ FIRM SEARCH: Finding law firm and other attorneys
+  STRATEGY 1.5: AI-suggested website search
+    AI suggested website: https://www.daggettshuler.com
+    WARNING: AI suggested invalid URL format: 'https://www.daggettshuler.com '
+    Skipping AI website search due to invalid format
+  STRATEGY 2: Name-based search (treating 'Daggett shuler' as firm name)
+    Using 2 search variations
+  Attempt 2A: '"Daggett shuler"'
+    Found 1 total organizations, 1 law firms
+    Cross-validating results with email domain: gmail.com
+    Filtered to 1 law firms (by industry/keywords)
 
-going to investigate why im only processing 10 update_close_leads
 
-swithc over to 
+Using 2 search variations
+  Attempt 2A: '"Lowe Law Attorneys"'
+    No law firms found
+  Attempt 2B: 'Lowe Law Attorneys'
+    Found 1 total organizations, 1 law firms
+    Cross-validating results with email domain: yahoo.com
+    Filtered to 1 law firms (by industry/keywords)
+
+this one too. we do get results but i think we are just not processing them 
+
+why dont we continue with gtting the emaisl here? 
 
 
-how do you know the nums in webhook_data are getting to close? how canwe track which number is whos? 
+but it works for this one below 
+
+
+  FIRM SEARCH: Finding law firm and other attorneys
+  STRATEGY 1.5: AI-suggested website search
+    AI suggested website: https://www.cutterlaw.com
+    WARNING: AI suggested invalid URL format: 'https://www.cutterlaw.com '
+    Skipping AI website search due to invalid format
+  STRATEGY 2: Name-based search (treating 'Cutter Law' as firm name)
+    Using 2 search variations
+  Attempt 2A: 'Cutter Law'
+    Found 2 total organizations, 2 law firms
+    Cross-validating results with email domain: yahoo.com
+    Filtered to 2 law firms (by industry/keywords)
+    SUCCESS! Selected: Cutter Law P.C. (high_confidence:0.900)
+    Trying organization #1: Cutter Law P.C.
+      Found 0 people (total: 0)
+      No people found with organization_ids, trying q_organization_name fallback...
+      FALLBACK SUCCESS: Found 17 people (total: 20)
+      Found 17 legal professionals to check for emails
+      Unlocking emails for up to 17 contacts...
+        [ 1/17] [OK] Scott Cutter - cscott@cutterlaw.com
+        [ 2/17] [OK] John Roussas - jroussas@cutterlaw.com
+        [ 3/17] [OK] Cutter Brooks - bcutter@cutterlaw.com
+        [ 4/17] [OK] Amanda Sheldon - asheldon@cutterlaw.com
+        [ 5/17] [OK] Ashley Avila - aavila@cutterlaw.com
+        [ 6/17] [OK] Guisela Perez - gperez@cutterlaw.com
+      Found 6 contacts with emails, stopping search
+      Successfully unlocked 6/7 emails (target: 6)
+      CREDITS SAVED: Pre-flight check filtered out non-matching contacts
+      SUCCESS! Found 6 people
+    FINAL SELECTION: Cutter Law P.C. (fallback_org_1)
+
+
+
+
+the first ai round trys to establish a frim name and likely website fro leads who have no real attorney email
+and no law office field. 
+
+firms that dont get any hits in apollo will be given the redirect follow method 
+
+now at this point im not sure how much more an ai can do. can it visit the website and grab main office contacts? 
+
+
+
+ok first never use emojies and whatsgoing on with this 855mikewins? are we not parsing the string properly? 
+ Domain mismatch: 855mikewins.com vs 855mikewins.com kymberly.debler
+
+ this could have been a great lead 
+
+ 0 promising contacts (out of 100)
+      Unlocking emails for up to 20 contacts...
+        [ 1/20] Frank Woodson - Domain mismatch: beasleyallen.com vs allen.law
+        [ 2/20] Chris Glover - Domain mismatch: beasleyallen.com vs allen.law
+        [ 3/20] Elizabeth Walden - Domain mismatch: beasleyallen.com vs allen.law
+        [ 4/20] Brittany Scott - Domain mismatch: beasleyallen.com vs allen.law
+        [ 5/20] Gibson Vance - Domain mismatch: beasleyallen.com vs allen.law
+        [ 6/20] Mary Miller - Domain mismatch: beasleyallen.com vs allen.law
+
+
+        this isuue also exsitis with this lead 
+        Trevan Cooper -> Long & Long
+    Input data: firm_name='Long & Long', attorney_email='john@longandlong.com (A) Jennifer@longandlong.com (P)'   
+
+  ATTORNEY ENRICHMENT: Getting direct contact info for john@longandlong.com (A) Jennifer@longandlong.com (P)      
+    Enriching attorney email: john@longandlong.com (A) Jennifer@longandlong.com (P)
+    Successfully enriched: None None at None
+    SUCCESS: Found None None - None
+
+  FIRM SEARCH: Finding law firm and other attorneys
+  STRATEGY 1: Domain-first search
+    Email domain: longandlong.com (A) Jennifer
+    Domain root: longandlong
+  Attempt 1A: Domain search 'longandlong.com (A) Jennifer'
+  Attempt 1B: Domain root search 'longandlong'
+    Found 4 total, 4 domain-related, 1 law firms by industry
+    Filtered to 1 law firms (by industry/keywords)
+    SUCCESS! Selected: Long & Long Attorneys at Law (exact_domain_match) - DOMAIN ROOT MATCH
+    Trying organization #1: Long & Long Attorneys at Law
+      Found 18 people (total: 18)
+      Found 18 legal professionals to check for emails
+      Found 18 promising contacts (out of 18)
+      Unlocking emails for up to 18 contacts...
+        [ 1/18] Russell Johnson - Domain mismatch: longandlong.com vs longandlong.com (a) jennifer
+        [ 2/18] Jennifer Perez - Domain mismatch: longandlong.com vs longandlong.com (a) jennifer
+        [ 3/18] Joann Long - Domain mismatch: longandlong.com vs longandlong.com (a) jennifer
+
+
+        i also need to quit unlocking emails for a firm when i already know they dont match my domain 
+        lets top unlocking emails for a frim after we get 5 domain mismathces 
+
+
+
+Rice McGowan & Brandt
+
+this search directly yields a result in apollo. create a test script with this query, writ the repsone to a file. so we then can see if we are missing anything. we shoudl get a hit here 
+
+
+look through the logs from my most recetn run and find me leads that should have had their original attorny enriched.  liek so in hi example from the printed out put 
+
+ ATTORNEY ENRICHMENT: Getting direct contact info for paul@williamsthorson.com
+    Enriching attorney email: paul@williamsthorson.com
+    Successfully enriched: Paul Thorson at None
+    SUCCESS: Found Paul Thorson - Partner
+
+
+
+
+ATTORNEY ENRICHMENT: Getting direct contact info for janeisha@parnalllaw.com
+    Enriching attorney email: janeisha@parnalllaw.com
+    Successfully enriched: Janeisha Brown at Parnall Law Firm - Hurt? Call Bert
+    SUCCESS: Found Janeisha Brown - Personal Injury Lead Case Manager
+
+  FIRM SEARCH: Finding law firm and other attorneys
+  STRATEGY 1: Domain-first search
+    Email domain: parnalllaw.com
+    Domain root: parnalllaw
+  Attempt 1A: Domain search 'parnalllaw.com'
+  Attempt 1B: Domain root search 'parnalllaw'
+  STRATEGY 2: Name-based search (treating 'Parnall' as firm name)
+    Using 0 search variations
+    No results found
+  Fallback by domain-root-as-name: 'parnalllaw'
+    No law firms found via domain
+  Fallback by exact domain: 'parnalllaw.com'
+    Found 37 total organizations via exact domain, using all (exact domain is very strong signal)
+
+
+
+how cold i be gettign a hit for the attoeny enrhcment but not the firm? am i sending out the apollo request for this 
+person at this point?
+
+

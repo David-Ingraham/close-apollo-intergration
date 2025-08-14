@@ -84,7 +84,7 @@ def get_todays_leads():
 
     print(f"Fetching {view_name} smart view...")
     
-    # Fresh payload for each run - pagination starts at 0
+    # Fresh payload for each run - cursor-based pagination
     payload = {
         "query": {
             "type": "saved_search",
@@ -93,83 +93,103 @@ def get_todays_leads():
         "_fields": {
             "lead": ["id", "display_name", "status_id", "name", "contacts", "custom"]
         },
-        "_limit": 100,
-        "_skip": 0  # Always start fresh
+        "_limit": 200
+        # Note: _cursor will be added in the loop when available
     }
 
     try:
         all_leads = []
         page_count = 0
-        seen_lead_ids = set()
+        cursor = None  # Start with no cursor for first page
         
         while True:
             page_count += 1
+            
+            # Add cursor to payload if we have one (not for first page)
+            if cursor:
+                payload['_cursor'] = cursor
+            elif '_cursor' in payload:
+                # Remove cursor if we don't have one (first page)
+                del payload['_cursor']
+            
             # Make the POST request to Advanced Filtering API
             response = requests.post(url, headers=headers, json=payload)
-            print(f"asking for uncalled leads view (page {page_count})")
+            print(f"Requesting page {page_count} (cursor: {cursor[:20] + '...' if cursor else 'None'})")
             response.raise_for_status()  # Raise an error for bad status codes
             
-            leads = response.json()
-            page_leads = leads.get('data', [])
+            api_response = response.json()
+            page_leads = api_response.get('data', [])
             
             print(f"Found {len(page_leads)} leads on page {page_count}")
+            print(f"API Response keys: {list(api_response.keys())}")
             
-            # Debug: Show pagination info
-            print(f"API Response keys: {list(leads.keys())}")
+            # Check for total count information on first page
+            if page_count == 1:
+                for key in api_response.keys():
+                    if 'total' in key.lower() or 'count' in key.lower() or 'has_more' in key.lower():
+                        print(f"Total info found - {key}: {api_response[key]}")
+                
+                # Print full first response for debugging (excluding the actual data)
+                debug_response = {k: v for k, v in api_response.items() if k != 'data'}
+                print(f"First page metadata: {debug_response}")
             
-            # Check for empty page or no new leads
+            # Check for empty page - means we're done
             if not page_leads:
                 print("No more pages (empty results)")
                 break
             
-            # For skip-based pagination, if we get fewer results than requested, we're at the end
+            # Add all leads from this page
+            all_leads.extend(page_leads)
+            print(f"Added {len(page_leads)} leads (total: {len(all_leads)})")
+            
+            # If we got fewer leads than requested, we've reached the end
             if len(page_leads) < payload['_limit']:
                 print(f"Got {len(page_leads)} leads (less than limit {payload['_limit']}) - reached end")
-                all_leads.extend(page_leads)
-                print(f"Added {len(page_leads)} leads (total: {len(all_leads)})")
                 break
             
-            # Check for duplicate leads (shouldn't happen with skip-based, but safety check)
-            new_leads = []
-            duplicates_found = 0
-            for lead in page_leads:
-                lead_id = lead.get('id')
-                if lead_id not in seen_lead_ids:
-                    seen_lead_ids.add(lead_id)
-                    new_leads.append(lead)
-                else:
-                    duplicates_found += 1
+            # Get cursor for next page
+            next_cursor = api_response.get('cursor')
             
-            if duplicates_found > 0:
-                print(f"WARNING: Found {duplicates_found} duplicate leads with skip-based pagination")
-                
-            all_leads.extend(new_leads)
-            print(f"Added {len(new_leads)} new leads (total: {len(all_leads)})")
-                
-            # Continue to next page using skip-based pagination
-                
-            # Set skip for next page (skip-based pagination)
-            payload['_skip'] = page_count * payload['_limit']
-            print(f"Setting skip to: {payload['_skip']}")
+            # Debug: Print full cursors for comparison
+            print(f"Current cursor: {cursor}")
+            print(f"Next cursor:    {next_cursor}")
             
-            # Small delay to avoid overwhelming the API
-            if page_count > 1:
-                print("Waiting 1 second before next page...")
-                import time
-                time.sleep(1)
+            # If no cursor returned, we're at the end
+            if not next_cursor:
+                print("No cursor returned - reached end of results")
+                break
+                
+            # If cursor hasn't changed, we're stuck (safety check)
+            if next_cursor == cursor:
+                print("WARNING: Cursor hasn't changed - stopping to prevent infinite loop")
+                print(f"Stuck cursor: {cursor}")
+                break
+                
+            # Update cursor for next iteration
+            cursor = next_cursor
+            
+            # Safety limit to prevent runaway loops
+            if page_count >= 20:
+                print(f"WARNING: Reached safety limit of 20 pages ({len(all_leads)} leads)")
+                break
+                
+            # Add delay to be API-friendly
+            print("Waiting 1 second before next page...")
+            import time
+            time.sleep(1)
         
         print(f"Total leads retrieved: {len(all_leads)} across {page_count} pages")
         
         if len(all_leads) > 0:
             # Return in the same format as before
-            final_result = leads.copy()  # Keep metadata from last response
+            final_result = api_response.copy()  # Keep metadata from last response
             final_result['data'] = all_leads
             return final_result
         else:
             print(f"No leads found in {view_name}, returning empty result...")
             
             # Return empty result instead of fallback
-            empty_result = leads.copy()  # Keep metadata from last response
+            empty_result = api_response.copy()  # Keep metadata from last response
             empty_result['data'] = []
             return empty_result
         
@@ -267,17 +287,18 @@ def process_leads_data(leads_data, limit=None):
             attorney_email = client_contact.get('custom.cf_vq0cl2Sj1h0QaSePdnTdf3NyAjx3w4QcgmlhgJrWrZE', 'N/A')
             
             # PRIORITY: Law Office > Domain-derived name > Attorney Name
+            firm_name_source = None  # Track source for logging later
             if law_office != 'N/A' and law_office.strip():
                 firm_name = law_office
-                print(f"    Using Law Office field: {firm_name}")
+                firm_name_source = f"Using Law Office field: {firm_name}"
             elif attorney_email != 'N/A' and '@' in attorney_email and not extract_domain_from_email(attorney_email) in ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'aol.com']:
                 # Derive firm name from business email domain
                 domain = extract_domain_from_email(attorney_email)
                 firm_name = derive_firm_name_from_domain(domain)
-                print(f"    Derived from domain {domain}: {firm_name}")
+                firm_name_source = f"Derived from domain {domain}: {firm_name}"
             elif attorney_name_field != 'N/A' and attorney_name_field.strip():
                 firm_name = attorney_name_field
-                print(f"    Using Attorney Name field: {firm_name}")
+                firm_name_source = f"Using Attorney Name field: {firm_name}"
             else:
                 firm_name = 'N/A'
             
@@ -349,6 +370,10 @@ def process_leads_data(leads_data, limit=None):
         if skip_reason:
             print(f"  Skip Reason: {skip_reason}")
         print(f"  Total Contacts: {len(lead.get('contacts', []))}")
+        
+        # Print firm name source info AFTER the lead info
+        if firm_name_source:
+            print(f"    {firm_name_source}")
     
     return processed_leads
 
