@@ -135,20 +135,22 @@ def extract_contacts_for_enrichment(data):
         # NEW: Process attorney contact first (if exists)
         attorney_contact = result.get('attorney_contact')
         if attorney_contact and attorney_contact.get('email') and attorney_contact.get('person_id'):
-            enrichment_targets.append({
-                'lead_id': lead_id,
-                'client_name': client_name,
-                'firm_name': firm_name,
-                'contact': attorney_contact,
-                'contact_type': 'attorney',  # Mark as attorney
-                'request_id': f"{lead_id}_attorney"
-            })
+            # Skip if phone number already exists
+            if not attorney_contact.get('phone'):
+                enrichment_targets.append({
+                    'lead_id': lead_id,
+                    'client_name': client_name,
+                    'firm_name': firm_name,
+                    'contact': attorney_contact,
+                    'contact_type': 'attorney',  # Mark as attorney
+                    'request_id': f"{lead_id}_attorney"
+                })
         
         # Process firm contacts
         contacts = result.get('contacts', [])
         for i, contact in enumerate(contacts):
-            # Only process contacts with email and person_id
-            if contact.get('email') and contact.get('person_id'):
+            # Only process contacts with email and person_id, and no existing phone
+            if contact.get('email') and contact.get('person_id') and not contact.get('phone'):
                 enrichment_targets.append({
                     'lead_id': lead_id,
                     'client_name': client_name,

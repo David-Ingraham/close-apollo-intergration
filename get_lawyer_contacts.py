@@ -2,10 +2,82 @@ import os
 from dotenv import load_dotenv
 import requests
 import json
+import time
 from base64 import b64encode
 
 # Load environment variables
 load_dotenv()
+
+def fetch_leads_via_export_api(headers, view_id, view_name):
+    """Fetch leads using Close CRM Export API for large datasets"""
+    try:
+        # Step 1: Initiate export with date filter (matches smart view criteria)
+        export_url = "https://api.close.com/api/v1/export/lead/"
+        export_payload = {
+            "query": "date_created >= 2025-07-08",  # Matches smart view date filter
+            "format": "json",
+            "type": "leads",
+            "send_done_email": False
+        }
+        
+        print("  Initiating export...")
+        response = requests.post(export_url, headers=headers, json=export_payload, timeout=30)
+        
+        if response.status_code not in [200, 201]:
+            print(f"  Export initiation failed: {response.status_code}")
+            return None
+        
+        export_data = response.json()
+        export_id = export_data.get('id')
+        print(f"  Export ID: {export_id}")
+        
+        # Step 2: Wait for export completion
+        status_url = f"https://api.close.com/api/v1/export/{export_id}/"
+        max_wait = 300  # 5 minutes
+        start_time = time.time()
+        
+        while time.time() - start_time < max_wait:
+            response = requests.get(status_url, headers=headers, timeout=30)
+            if response.status_code != 200:
+                print(f"  Status check failed: {response.status_code}")
+                return None
+            
+            status_data = response.json()
+            status = status_data.get('status')
+            print(f"  Export status: {status}")
+            
+            if status == 'done':
+                download_url = status_data.get('download_url')
+                print(f"  Downloading data...")
+                
+                # Step 3: Download the data
+                download_response = requests.get(download_url, headers=headers, timeout=60)
+                if download_response.status_code == 200:
+                    leads_data = download_response.json()
+                    print(f"  Downloaded {len(leads_data)} leads")
+                    return leads_data
+                else:
+                    print(f"  Download failed: {download_response.status_code}")
+                    return None
+            
+            elif status == 'error':
+                print(f"  Export failed with error")
+                return None
+            
+            elif status in ['created', 'started', 'in_progress']:
+                time.sleep(10)
+            else:
+                print(f"  Unknown status: {status}")
+                return None
+        
+        print(f"  Export timed out after {max_wait} seconds")
+        return None
+        
+    except Exception as e:
+        print(f"  Export API error: {e}")
+        return None
+
+
 
 def get_todays_leads():
     # Get API key from environment
@@ -46,6 +118,10 @@ def get_todays_leads():
         "surgery_in_discovery": {
             "id": "save_O73Z1YkRGhLrN5qtyhti2lLoBYVeTqkKWsiG2ZUj4cE",
             "name": "Surgery in Discovery"
+        },
+        "All meta leads": {
+            "id": "save_TOTstqdumHKQcNUaztinosJBnRDPYd7IAMhU2SuKyVH",
+            "name": "All Meta Leads"
         }
     }
     
@@ -74,15 +150,26 @@ def get_todays_leads():
     
     print(f"Selected: {view_name}")
     
-    url = 'https://api.close.com/api/v1/data/search/'
-    
     headers = {
         'Authorization': f'Basic {encoded_key}',
         'Content-Type': 'application/json',
         'Accept': 'application/json'
     }
 
-    print(f"Fetching {view_name} smart view...")
+    # Special handling for "All Meta Leads" - use Export API instead of cursor pagination
+    if "All Meta Leads" in view_name:
+        print(f"Using Export API for {view_name} (bypasses pagination issues)...")
+        all_leads = fetch_leads_via_export_api(headers, view_id, view_name)
+        if all_leads is None:
+            print("Export API failed, falling back to cursor pagination...")
+        else:
+            print(f"Export API successful: {len(all_leads)} leads retrieved")
+            # Format data to match cursor API response format and return it
+            return {'data': all_leads}
+    
+    # Standard cursor pagination for other smart views
+    print(f"Fetching {view_name} smart view using cursor pagination...")
+    url = 'https://api.close.com/api/v1/data/search/'
     
     # Fresh payload for each run - cursor-based pagination
     payload = {
