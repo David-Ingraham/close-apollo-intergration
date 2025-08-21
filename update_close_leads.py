@@ -271,15 +271,7 @@ def add_lawyer_to_lead(lead_id, client_name, firm_name, lawyer_data, phone_data=
         print(f"    [SKIP] {lawyer_data['name']} - no valid email")
         return None
     
-    # Domain validation - ensure contact email domain matches the attorney firm domain
-    if attorney_firm_domain:
-        if not is_domain_related(lawyer_email, attorney_firm_domain):
-            contact_domain = safe_split(lawyer_email, '@')[1] if '@' in safe_str(lawyer_email) else 'unknown'
-            print(f"    [SKIP] {lawyer_data['name']} - email domain mismatch")
-            print(f"           Attorney firm domain: {attorney_firm_domain}")
-            print(f"           Contact email domain: {contact_domain}")
-            print(f"           This contact appears to be from a different organization")
-            return None
+    # Domain validation removed - handled upstream in apollo_enrich.py
     
     # Check if lawyer already exists
     if existing_contacts is None:

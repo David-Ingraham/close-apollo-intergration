@@ -122,6 +122,10 @@ def get_todays_leads():
         "All meta leads": {
             "id": "save_TOTstqdumHKQcNUaztinosJBnRDPYd7IAMhU2SuKyVH",
             "name": "All Meta Leads"
+        },
+        "yesterday_leads": {
+            "id": "save_uFHbgnOiKu9tQiuZDfLM5JzrkZEOOMG2IF15qxONwaV",
+            "name": "Yesterday's Leads"
         }
     }
     
@@ -406,29 +410,35 @@ def process_leads_data(leads_data, limit=None):
             
 
         
-        # Determine enrichment needs and extract domain
-        firm_domain = extract_domain_from_email(attorney_email) if attorney_email != 'N/A' else None
-        needs_enrichment = True
-        skip_reason = None
-        search_strategy = None
-        
-        # Determine search strategy - prioritize firm name over domain
-        if attorney_name != 'N/A':
-            search_strategy = "firm_name"
-        elif firm_domain:
-            search_strategy = "domain"
-        
-        # Skip if no Law Office field AND personal email domain
-        # This means we have no reliable way to validate search results
-        if (law_office == 'N/A' or not law_office.strip()) and firm_domain and is_public_domain(firm_domain):
+        # Check if lead already has more than 2 contacts (skip enrichment)
+        total_contacts = len(lead.get('contacts', []))
+        if total_contacts > 2:
             needs_enrichment = False
-            skip_reason = "No Law Office field and personal email domain - cannot validate results"
-        
-        # Also skip if we have absolutely no searchable information
-        elif attorney_name == 'N/A' and not firm_domain:
-            needs_enrichment = False
-            skip_reason = "No firm name or domain available for search"
-        
+            skip_reason = f"Lead already has {total_contacts} contacts (>2) - skipping enrichment"
+            search_strategy = None
+        else:
+            # Determine enrichment needs and extract domain (existing logic)
+            firm_domain = extract_domain_from_email(attorney_email) if attorney_email != 'N/A' else None
+            needs_enrichment = True
+            skip_reason = None
+            search_strategy = None
+            
+            # Determine search strategy - prioritize firm name over domain
+            if attorney_name != 'N/A':
+                search_strategy = "firm_name"
+            elif firm_domain:
+                search_strategy = "domain"
+            
+            # Skip if no Law Office field AND personal email domain
+            if (law_office == 'N/A' or not law_office.strip()) and firm_domain and is_public_domain(firm_domain):
+                needs_enrichment = False
+                skip_reason = "No Law Office field and personal email domain - cannot validate results"
+            
+            # Also skip if we have absolutely no searchable information
+            elif attorney_name == 'N/A' and not firm_domain:
+                needs_enrichment = False
+                skip_reason = "No firm name or domain available for search"
+
         # Create lead record
         lead_record = {
             "lead_id": lead.get('id'),

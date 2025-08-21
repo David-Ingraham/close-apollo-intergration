@@ -1,5 +1,74 @@
+the none none contacts gtting uploaded to close ... i think its the initial enrchment attmpet
+on the given lawyer email thats causing that. i thin that bc the first few apollo num repsone files come in well 
+
+before get_apollo_nums gets caleld 
+
+
+
+Checking domain redirects for GetBC.com
+    Domain redirect found: GetBC.com → brownandcrouppen.com
+      Redirect found: GetBC.com → brownandcrouppen.com
+      Searching Apollo for final domain: brownandcrouppen.com
+      Domain search found 1 organizations
+      Total organizations found: 1
+      Found 1 law firms by industry
+    Filtered to 1 law firms (by industry/keywords)
+    FINAL SELECTION: Better Credit Now (no_people_found)
+
+
+STILL NOT WORKING. RECALL RESULTS FROM DIRECT TST OF THIS DOMAIN
+
+
+
  caching of already acessed emails 
  
+ infer email from full name and the schema of other emails we get 
+
+ santizie .con to .com 
+
+
+ [PHONE] Found 2 phone numbers for Cutter Brooks (firm contact)
+    [SKIP] Cutter Brooks - email domain mismatch
+           Attorney firm domain: yahoo.com
+           Contact email domain: cutterlaw.com
+           This contact appears to be from a different organization
+    [SKIP] Amanda Sheldon - email domain mismatch
+           Attorney firm domain: yahoo.com
+           Contact email domain: cutterlaw.com
+           This contact appears to be from a different organization
+    [PHONE] Found 1 phone numbers for Ashley Avila (firm contact)
+    [SKIP] Ashley Avila - email domain mismatch
+           Attorney firm domain: yahoo.com
+           Contact email domain: cutterlaw.com
+           This contact appears to be from a different organization
+    [PHONE] Found 1 phone numbers for Guisela Perez (firm contact)
+    [SKIP] Guisela Perez - email domain mismatch
+           Attorney firm domain: yahoo.com
+           Contact email domain: cutterlaw.com
+           This contact appears to be from a different organization
+ this one defeinly has people in it. maybe we are searching wrong 
+
+ shouldnt do the domain check if its a personal email like this 
+
+  ATTORNEY ENRICHMENT: Getting direct contact info for Scottk@hllawfirm.com
+    Enriching attorney email: Scottk@hllawfirm.com
+    Successfully enriched: Scott Kruger at Heimerl & Lammers Family & Injury Law
+    SUCCESS: Found Scott Kruger - Partner
+
+  FIRM SEARCH: Finding law firm and other attorneys
+  STRATEGY 1: Domain-first search
+    Email domain: hllawfirm.com
+    Domain root: hllawfirm
+  Attempt 1A: Domain search 'hllawfirm.com'
+    Found 1 total, 1 exact domain matches, 1 law firms by industry
+    Filtered to 1 law firms (by industry/keywords)
+    SUCCESS! Selected: Heimerl & Lammers, LLC (exact_domain_match) - EXACT DOMAIN MATCH
+    Trying organization #1: Heimerl & Lammers, LLC
+      Found 0 people (total: 0)
+      No people found with organization_ids, trying q_organization_name fallback...
+      FALLBACK SUCCESS: Found 0 people (total: 6)
+      No people found, trying next organization...
+    FINAL SELECTION: Heimerl & Lammers, LLC (no_people_found)
  
  FIRM SEARCH: Finding law firm and other attorneys
   STRATEGY 1.5: AI-suggested website search

@@ -4,6 +4,7 @@ import re
 import time
 import requests
 import difflib
+import sqlite3
 from urllib.parse import urlparse
 from dotenv import load_dotenv
 
@@ -17,6 +18,299 @@ def safe_str(value):
 def safe_lower(text):
     """Safely convert to lowercase, handles None"""
     return safe_str(text).lower()
+
+# Database helper functions for caching
+def connect_to_db():
+    """Connect to the Apollo cache database"""
+    try:
+        conn = sqlite3.connect('apollo_cache.db')
+        cursor = conn.cursor()
+        return conn, cursor
+    except Exception as e:
+        print(f"Warning: Could not connect to cache database: {e}")
+        return None, None
+
+def find_company_in_cache_by_domain(cursor, domain):
+    """Find a company in cache by domain (most reliable)"""
+    if not cursor or not domain:
+        return None
+    
+    try:
+        cursor.execute("""
+            SELECT organization_id, name, primary_domain, website_url, phone 
+            FROM apollo_companies 
+            WHERE LOWER(primary_domain) = LOWER(?)
+        """, (domain,))
+        result = cursor.fetchone()
+        
+        if result:
+            return {
+                'organization_id': result[0],
+                'name': result[1],
+                'primary_domain': result[2],
+                'website_url': result[3],
+                'phone': result[4]
+            }
+        
+        return None
+    except Exception as e:
+        print(f"Error searching cache by domain '{domain}': {e}")
+        return None
+
+def find_company_in_cache_by_name(cursor, firm_name):
+    """Find a company in cache by name with fuzzy matching"""
+    if not cursor or not firm_name:
+        return None
+    
+    try:
+        # Try exact match first
+        cursor.execute("""
+            SELECT organization_id, name, primary_domain, website_url, phone 
+            FROM apollo_companies 
+            WHERE LOWER(name) = LOWER(?)
+        """, (firm_name,))
+        result = cursor.fetchone()
+        
+        if result:
+            return {
+                'organization_id': result[0],
+                'name': result[1],
+                'primary_domain': result[2],
+                'website_url': result[3],
+                'phone': result[4]
+            }
+        
+        # Try containment matching: DB name contains input name
+        cursor.execute("""
+            SELECT organization_id, name, primary_domain, website_url, phone 
+            FROM apollo_companies 
+            WHERE LOWER(name) LIKE LOWER(?)
+            ORDER BY LENGTH(name) ASC
+            LIMIT 1
+        """, (f'%{firm_name}%',))
+        result = cursor.fetchone()
+        
+        if result:
+            return {
+                'organization_id': result[0],
+                'name': result[1],
+                'primary_domain': result[2],
+                'website_url': result[3],
+                'phone': result[4]
+            }
+        
+        # Try reverse containment: input name contains DB name
+        cursor.execute("""
+            SELECT organization_id, name, primary_domain, website_url, phone 
+            FROM apollo_companies 
+            WHERE LOWER(?) LIKE LOWER('%' || name || '%')
+            ORDER BY LENGTH(name) DESC
+            LIMIT 1
+        """, (firm_name,))
+        result = cursor.fetchone()
+        
+        if result:
+            return {
+                'organization_id': result[0],
+                'name': result[1],
+                'primary_domain': result[2],
+                'website_url': result[3],
+                'phone': result[4]
+            }
+        
+        return None
+    except Exception as e:
+        print(f"Error searching cache by name '{firm_name}': {e}")
+        return None
+
+def check_cache_for_company(cursor, firm_name, attorney_email):
+    """Smart cache lookup: try domain first, then name matching"""
+    if not cursor:
+        return None
+    
+    # Extract domain from attorney email
+    domain = None
+    if attorney_email and '@' in attorney_email:
+        domain = attorney_email.split('@')[1].lower()
+    
+    # Try domain-based lookup first (most reliable)
+    if domain:
+        print(f"  [DB CACHE] Checking cache by domain: {domain}")
+        company = find_company_in_cache_by_domain(cursor, domain)
+        if company:
+            print(f"  [DB CACHE] Found company by domain: {company['name']}")
+            return company
+        else:
+            print(f"  [DB CACHE] No company found for domain: {domain}")
+    
+    # Fallback to name-based lookup
+    if firm_name:
+        print(f"  [DB CACHE] Checking cache by name: {firm_name}")
+        company = find_company_in_cache_by_name(cursor, firm_name)
+        if company:
+            print(f"  [DB CACHE] Found company by name: {company['name']}")
+            return company
+        else:
+            print(f"  [DB CACHE] No company found for name: {firm_name}")
+    
+    return None
+
+def find_people_in_cache(cursor, organization_id):
+    """Find all people for a company in the cache database"""
+    if not cursor or not organization_id:
+        return []
+    
+    try:
+        cursor.execute("""
+            SELECT person_id, name, email, phone, title, organization_name
+            FROM apollo_people 
+            WHERE organization_id = ?
+            ORDER BY 
+                CASE WHEN phone IS NOT NULL AND phone != '' THEN 0 ELSE 1 END,
+                title ASC
+        """, (organization_id,))
+        
+        results = cursor.fetchall()
+        people = []
+        
+        for row in results:
+            person = {
+                'person_id': row[0],
+                'name': row[1],
+                'email': row[2],
+                'phone': row[3],
+                'title': row[4],
+                'organization_name': row[5]
+            }
+            people.append(person)
+        
+        return people
+    except Exception as e:
+        print(f"Error finding people for organization {organization_id}: {e}")
+        return []
+
+def save_enrichment_to_cache(cursor, conn, company_data, people_data):
+    """Save enrichment results to the cache database"""
+    if not cursor or not conn:
+        return
+    
+    try:
+        # Save company data
+        if company_data and company_data.get('organization_id'):
+            cursor.execute("""
+                INSERT OR REPLACE INTO apollo_companies 
+                (organization_id, name, primary_domain, website_url, phone, search_term, last_updated, source)
+                VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 'apollo_enrich_cache')
+            """, (
+                company_data.get('organization_id'),
+                company_data.get('name'),
+                company_data.get('primary_domain'),
+                company_data.get('website_url'),
+                company_data.get('phone'),
+                company_data.get('search_term', '')
+            ))
+        
+        # Save people data
+        if people_data:
+            for person in people_data:
+                # Fix: Use 'id' instead of 'person_id' (Apollo uses 'id')
+                person_id = person.get('id') or person.get('person_id')
+                if person_id:
+                    # Fix: Extract phone number properly from phone_numbers array or direct phone field
+                    phone = None
+                    if person.get('phone_numbers') and isinstance(person.get('phone_numbers'), list):
+                        # Phone is in phone_numbers array
+                        phone_nums = person['phone_numbers']
+                        if phone_nums and len(phone_nums) > 0:
+                            phone_obj = phone_nums[0]
+                            if isinstance(phone_obj, dict):
+                                phone = phone_obj.get('raw_number') or phone_obj.get('sanitized_number')
+                            elif isinstance(phone_obj, str):
+                                phone = phone_obj
+                    elif person.get('phone'):
+                        # Phone is directly available
+                        phone = person.get('phone')
+                    
+                    # Build full name if needed
+                    full_name = person.get('name')
+                    if not full_name:
+                        first = person.get('first_name', '').strip()
+                        last = person.get('last_name', '').strip()
+                        full_name = f"{first} {last}".strip()
+                    
+                    cursor.execute("""
+                        INSERT OR REPLACE INTO apollo_people 
+                        (person_id, name, email, phone, title, organization_id, organization_name, last_updated, source)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 'apollo_enrich_cache')
+                    """, (
+                        person_id,
+                        full_name,
+                        person.get('email'),
+                        phone,
+                        person.get('title'),
+                        person.get('organization_id'),
+                        person.get('organization_name')
+                    ))
+        
+        conn.commit()
+        print(f"  [DB CACHE] Saved company and {len(people_data) if people_data else 0} contacts to cache")
+        
+    except Exception as e:
+        print(f"Error saving to cache: {e}")
+
+def analyze_cache_completeness(people):
+    """Analyze cached people data and decide what to do"""
+    if not people:
+        return {'complete': False, 'people_with_phones': 0, 'total_people': 0, 'needs_phone_enrichment': False}
+    
+    # More robust phone number detection
+    people_with_phones = []
+    for p in people:
+        phone = p.get('phone')
+        if phone and phone.strip() and phone.strip().lower() != 'null':
+            people_with_phones.append(p)
+    
+    # Debug output to help diagnose issues
+    print(f"    [DB CACHE DEBUG] Total people: {len(people)}, People with phones: {len(people_with_phones)}")
+    for p in people:
+        phone = p.get('phone', 'None')
+        name = p.get('name', 'Unknown')
+        print(f"    [DB CACHE DEBUG] {name}: phone='{phone}'")
+    
+    result = {
+        'complete': len(people_with_phones) >= 2,  # Complete if we have 2+ phones
+        'people_with_phones': len(people_with_phones),
+        'total_people': len(people),
+        'needs_phone_enrichment': len(people_with_phones) < 2 and len(people) > 0  # Need phones if we have people but <2 phones
+    }
+    
+    return result
+
+def save_successful_result_to_cache(result, cursor, conn):
+    """Save a successful Apollo search result to the cache"""
+    if not cursor or not conn or not result.get('search_successful'):
+        return
+    
+    try:
+        # Extract company data from result - try different possible field names
+        company_data = (result.get('firm_found') or 
+                       result.get('selected_organization') or 
+                       (result.get('organizations_found', [{}])[0] if result.get('organizations_found') else None))
+        
+        if company_data:
+            # Add search term for reference
+            company_data = dict(company_data)  # Make a copy
+            company_data['search_term'] = result.get('firm_name', '')
+        
+        # Extract people data from result - try different possible field names
+        people_data = (result.get('contacts_found') if isinstance(result.get('contacts_found'), list) else
+                      result.get('contacts', []))
+        
+        # Save to cache
+        save_enrichment_to_cache(cursor, conn, company_data, people_data)
+        
+    except Exception as e:
+        print(f"  [DB CACHE] Error saving result to cache: {e}")
 
 def safe_strip(text):
     """Safely strip whitespace, handles None"""
@@ -324,9 +618,9 @@ def search_apollo_organization(query, page=1, per_page=100, domains=None):
         if data.get("accounts"):
             # Convert accounts to organizations format for compatibility
             data["organizations"] = data["accounts"]
-            return data
-        elif data.get("organizations"):
-            return data
+        return data
+    elif data.get("organizations"):
+        return data
     # Domain search (exact) if provided - but this often returns irrelevant results
     if domains:
         print(f"    WARNING: Domain searches often return irrelevant results")
@@ -646,6 +940,8 @@ def search_people_at_organization(org_id, org_name, attorney_firm_domain=None):
         
         print(f"      Unlocking emails for up to {max_attempts} contacts...")
         
+        consecutive_email_mismatches = 0
+        
         for i, person in enumerate(all_legal_people[:max_attempts], 1):
             # Stop if we already found enough contacts with emails
             if len(enriched_contacts) >= target_contacts:
@@ -676,7 +972,15 @@ def search_people_at_organization(org_id, org_name, attorney_firm_domain=None):
                             if not is_domain_related_strict(email, attorney_firm_domain):
                                 contact_domain_valid = False
                                 contact_email_domain = extract_domain_from_email(email)
+                                consecutive_email_mismatches += 1
                                 print(f"        [{i:2d}/{max_attempts}] {enriched_person.get('first_name')} {enriched_person.get('last_name')} - Domain mismatch: {contact_email_domain} vs {attorney_firm_domain}")
+                                
+                                # Early exit if we hit 3 consecutive email domain mismatches
+                                if consecutive_email_mismatches >= 3:
+                                    print(f"        EARLY EXIT: 3 consecutive email domain mismatches, stopping to save credits")
+                                    break
+                            else:
+                                consecutive_email_mismatches = 0  # Reset counter on valid match
                         
                         if contact_domain_valid:
                             contact = {
@@ -795,11 +1099,74 @@ def enrich_attorney_email_for_phone(attorney_email, webhook_url=None):
         print(f"    Error enriching {attorney_email}: {e}")
         return None, f"error:{str(e)}"
 
-def search_people_with_fallback(candidates, firm_name, attorney_firm_domain=None):
-    """Try multiple organizations until we find people"""
+def is_reasonable_domain_match(found_domain, target_domain):
+    """Check if a found domain is a reasonable match for the target domain"""
+    if not found_domain or not target_domain:
+        return True  # If no domain info, allow it
+    
+    found_clean = found_domain.lower().replace('www.', '')
+    target_clean = target_domain.lower().replace('www.', '')
+    
+    # Exact match
+    if found_clean == target_clean:
+        return True
+    
+    # Extract root domains
+    found_root = found_clean.split('.')[0]
+    target_root = target_clean.split('.')[0]
+    
+    # If roots are identical, check TLD similarity
+    if found_root == target_root:
+        # Same root with legal TLDs is good
+        legal_tlds = ['.law', '.legal', '.com', '.net', '.org']
+        found_tld = '.' + '.'.join(found_clean.split('.')[1:])
+        target_tld = '.' + '.'.join(target_clean.split('.')[1:])
+        
+        if found_tld in legal_tlds and target_tld in legal_tlds:
+            return True
+    
+    # Reject if one domain is clearly an extension of another with different business
+    # e.g., getb.com vs getbee.com, getblock.io
+    if len(found_root) > len(target_root) + 2:  # Significantly longer
+        return False
+    if len(target_root) > len(found_root) + 2:  # Significantly longer
+        return False
+    
+    # Different TLD extensions that suggest different business types
+    crypto_tlds = ['.io', '.crypto', '.blockchain']
+    found_tld = '.' + '.'.join(found_clean.split('.')[1:]) if '.' in found_clean else ''
+    target_tld = '.' + '.'.join(target_clean.split('.')[1:]) if '.' in target_clean else ''
+    
+    if found_tld in crypto_tlds and target_tld not in crypto_tlds:
+        return False
+    
+    return True
+
+def search_people_with_fallback(candidates, firm_name, attorney_firm_domain=None, attorney_email=None):
+    """Try multiple organizations until we find people, with redirect fallback"""
+    consecutive_domain_mismatches = 0
+    failed_orgs_count = 0
+    
+    # Filter candidates upfront using domain validation
+    if attorney_firm_domain:
+        reasonable_candidates = []
+        for org in candidates:
+            org_domain = _primary_domain(org)
+            if is_reasonable_domain_match(org_domain, attorney_firm_domain):
+                reasonable_candidates.append(org)
+            else:
+                org_name = org.get('name', 'Unknown').encode('ascii', 'ignore').decode('ascii')
+                print(f"    SKIPPED organization: {org_name} (domain {org_domain} not reasonable match for {attorney_firm_domain})")
+        
+        # Use filtered candidates if we found any reasonable ones
+        if reasonable_candidates:
+            candidates = reasonable_candidates
+            print(f"    Filtered to {len(candidates)} reasonable domain matches")
+    
     for i, org in enumerate(candidates):
         org_id = org.get('id')
         org_name = org.get('name', 'Unknown')
+        org_domain = _primary_domain(org)
         safe_name = org_name.encode('ascii', 'ignore').decode('ascii')
         
         print(f"    Trying organization #{i+1}: {safe_name}")
@@ -809,7 +1176,35 @@ def search_people_with_fallback(candidates, firm_name, attorney_firm_domain=None
             print(f"      SUCCESS! Found {len(contacts)} people")
             return org, contacts, f"fallback_org_{i+1}"
         else:
-            print(f"      No people found, trying next organization...")
+            failed_orgs_count += 1
+            
+            # Check if this failure was due to domain mismatches
+            if attorney_firm_domain and org_domain:
+                if not is_reasonable_domain_match(org_domain, attorney_firm_domain):
+                    consecutive_domain_mismatches += 1
+                    print(f"      No people found (domain mismatch #{consecutive_domain_mismatches}), trying next organization...")
+                    
+                    # Early exit if we hit 3 consecutive domain mismatches
+                    if consecutive_domain_mismatches >= 3:
+                        print(f"      EARLY EXIT: 3 consecutive domain mismatches, stopping search to save credits")
+                        break
+                else:
+                    consecutive_domain_mismatches = 0  # Reset counter on reasonable match
+                    print(f"      No people found, trying next organization...")
+            else:
+                print(f"      No people found, trying next organization...")
+            
+            # REDIRECT FALLBACK: If we've tried 2+ organizations and they all failed with domain issues
+            if (failed_orgs_count >= 2 and attorney_email and attorney_firm_domain and 
+                not is_public_domain(attorney_firm_domain)):
+                
+                print(f"      REDIRECT FALLBACK: {failed_orgs_count} orgs failed, checking domain redirects...")
+                redirect_result = try_redirect_recovery(attorney_email, firm_name, attorney_firm_domain)
+                
+                if redirect_result:
+                    org, contacts, reason = redirect_result
+                    print(f"      REDIRECT SUCCESS! Found {len(contacts)} people via redirect")
+                    return org, contacts, f"redirect_recovery_{reason}"
     
     # If no org has people, return the first one anyway
     if candidates:
@@ -817,6 +1212,110 @@ def search_people_with_fallback(candidates, firm_name, attorney_firm_domain=None
         return org, [], "no_people_found"
     
     return None, [], "no_candidates"
+
+def try_redirect_recovery(attorney_email, firm_name, attorney_firm_domain):
+    """Try to recover using domain redirects when regular searches fail"""
+    if not attorney_email or '@' not in attorney_email:
+        return None
+        
+    original_domain = extract_domain_from_email(attorney_email)
+    if not original_domain or is_public_domain(original_domain):
+        return None
+    
+    print(f"      Checking domain redirects for {original_domain}")
+    
+    # Follow redirects to find final domain
+    redirect_result = follow_domain_redirects(original_domain)
+    
+    if not redirect_result:
+        print(f"      No redirects found for {original_domain}")
+        return None
+        
+    final_domain = redirect_result['final_domain']
+    print(f"      Redirect found: {original_domain} → {final_domain}")
+    
+    # Search Apollo using the final domain - try both methods
+    print(f"      Searching Apollo for final domain: {final_domain}")
+    
+    # Method 1: Domain-based search
+    api_response = search_apollo_organization(final_domain, page=1, per_page=100)
+    organizations = []
+    
+    if api_response and api_response.get('organizations'):
+        organizations = api_response['organizations']
+        print(f"      Domain search found {len(organizations)} organizations")
+    else:
+        print(f"      Domain search found 0 organizations")
+    
+    # Method 2: Name-based search (fallback) - extract domain root
+    if not organizations:
+        domain_root = final_domain.split('.')[0]  # "brownandcrouppen.com" -> "brownandcrouppen"
+        print(f"      Trying name-based search with: {domain_root}")
+        
+        # Use the name-based search method
+        api_key = os.getenv('APOLLO_API_KEY')
+        headers = {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache',
+            'X-Api-Key': api_key
+        }
+        
+        url = "https://api.apollo.io/api/v1/mixed_companies/search"
+        payload = {
+            "q_organization_name": domain_root,
+            "page": 1,
+            "per_page": 100
+        }
+        
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            if response.status_code == 200:
+                name_data = response.json()
+                name_organizations = name_data.get('organizations', [])
+                if name_organizations:
+                    organizations = name_organizations
+                    print(f"      Name search found {len(organizations)} organizations")
+                else:
+                    print(f"      Name search found 0 organizations")
+            else:
+                print(f"      Name search failed: {response.status_code}")
+        except Exception as e:
+            print(f"      Name search error: {e}")
+    
+    if not organizations:
+        print(f"      No organizations found for final domain: {final_domain}")
+        return None
+    
+    print(f"      Total organizations found: {len(organizations)}")
+    
+    # Use existing filtering and selection logic
+    law_firms = [org for org in organizations if is_law_firm_by_industry(org)]
+    
+    # If no law firms found by industry, use all organizations (redirect is strong signal)
+    if not law_firms and organizations:
+        law_firms = organizations
+        print(f"      Using all {len(organizations)} orgs (redirect is strong signal)")
+    else:
+        print(f"      Found {len(law_firms)} law firms by industry")
+    
+    if not law_firms:
+        return None
+    
+    # Try the best redirect candidate
+    ranked = rank_and_dedupe_organizations(law_firms, input_query=firm_name, input_domain=final_domain)
+    best, reason = choose_best_org(firm_name, final_domain, ranked, attorney_email)
+    
+    if best:
+        safe_name = best.get('name', 'Unknown').encode('ascii', 'ignore').decode('ascii')
+        print(f"      Selected redirect candidate: {safe_name}")
+        
+        # Search for people at the redirect organization - skip domain validation (redirect is authentication)
+        contacts = search_people_at_organization(best.get('id'), safe_name, None)
+        
+        if contacts:
+            return best, contacts, reason
+    
+    return None
 
 def follow_domain_redirects(original_domain):
     """
@@ -946,7 +1445,25 @@ def validate_redirect_relationship(company, original_domain, final_domain):
     
     return False
 
-def search_firm_with_retry(lead_data, webhook_url=None):
+def search_firm_with_retry(lead_data, webhook_url=None, cursor=None, conn=None):
+    # Establish database connection if not provided
+    db_connection_created = False
+    if cursor is None or conn is None:
+        conn, cursor = connect_to_db()
+        db_connection_created = True  # Track if we created the connection
+        if conn:
+            print("  [DB CACHE] Connected to Apollo cache database")
+        else:
+            print("  [DB CACHE] Cache database not available - proceeding without cache")
+            cursor = None
+            conn = None
+    
+    def cleanup_and_return(result):
+        """Helper function to clean up database connection and return result"""
+        if db_connection_created and conn:
+            conn.close()
+            print("  [DB CACHE] Database connection closed")
+        return result
     result = {
         'lead_id': lead_data.get('lead_id'),
         'client_name': lead_data.get('client_name'),
@@ -969,6 +1486,51 @@ def search_firm_with_retry(lead_data, webhook_url=None):
     ai_recovery = lead_data.get('ai_recovery')  # AI recovery metadata
     
     print(f"    Input data: firm_name='{firm_name}', attorney_email='{attorney_email}'")
+    
+    # DATABASE CACHE CHECK - Check if we already have this company
+    cached_company = None
+    cached_people = []
+    cache_analysis = None
+    
+    if cursor:
+        print(f"  [DB CACHE] Checking cache for '{firm_name}'...")
+        cached_company = check_cache_for_company(cursor, firm_name, attorney_email)
+        
+        if cached_company:
+            cached_people = find_people_in_cache(cursor, cached_company['organization_id'])
+            cache_analysis = analyze_cache_completeness(cached_people)
+            
+            if cache_analysis['complete']:
+                print(f"  [DB CACHE] COMPLETE DATA FOUND - {cache_analysis['total_people']} contacts with {cache_analysis['people_with_phones']} phone numbers")
+                print(f"  [DB CACHE] Skipping all Apollo API calls - using cached data")
+                
+                # Format cached data into the expected result structure
+                result.update({
+                    'search_successful': True,
+                    'winning_strategy': 'database_cache_complete',
+                    'winning_query': f"Cache lookup: {cached_company['name']}",
+                    'organizations_found': [cached_company],
+                    'firm_found': cached_company,
+                    'contacts_found': cached_people,
+                    'attorney_contact': None,
+                    'attorney_enrichment_status': 'skipped_cache_hit'
+                })
+                
+                # Show the cached contacts in console
+                print(f"  [DB CACHE] Contacts from cache:")
+                for contact in cached_people:
+                    phone_display = contact.get('phone', 'No phone')
+                    print(f"    - {contact.get('name', 'Unknown')} ({contact.get('title', 'No title')}) - {contact.get('email', 'No email')} - {phone_display}")
+                
+                return cleanup_and_return(result)
+            
+            elif cache_analysis['needs_phone_enrichment']:
+                print(f"  [DB CACHE] PARTIAL DATA FOUND - {cache_analysis['total_people']} contacts, {cache_analysis['people_with_phones']} with phones")
+                print(f"  [DB CACHE] Will skip company search but still do phone enrichment")
+            else:
+                print(f"  [DB CACHE] Found company but no people - will proceed with full Apollo search")
+        else:
+            print(f"  [DB CACHE] No matching company found - proceeding with Apollo search")
     
     # Show AI recovery information if present
     if ai_recovery:
@@ -997,7 +1559,7 @@ def search_firm_with_retry(lead_data, webhook_url=None):
     
     print(f"\n  FIRM SEARCH: Finding law firm and other attorneys")
     
-    # STRATEGY 1: Domain-First Search (when we have attorney email)
+    # STRATEGY 1: Domain-First Search (when we have attorney email)  
     if attorney_email and '@' in attorney_email and not is_public_domain(extract_domain_from_email(attorney_email)):
         email_domain = extract_domain_from_email(attorney_email)
         domain_root = extract_domain_root(email_domain)
@@ -1005,6 +1567,32 @@ def search_firm_with_retry(lead_data, webhook_url=None):
         print(f"  STRATEGY 1: Domain-first search")
         print(f"    Email domain: {email_domain}")
         print(f"    Domain root: {domain_root}")
+        
+        # Check if we can use cached company data for this domain
+        if cached_company and cache_analysis and cache_analysis['needs_phone_enrichment']:
+            print(f"  [DB CACHE] Using cached company data, skipping Apollo company search")
+            print(f"  [DB CACHE] Proceeding directly to phone enrichment for {cache_analysis['total_people']} cached contacts")
+            
+            # Use cached data but still do phone enrichment
+            result.update({
+                'search_successful': True,
+                'winning_strategy': 'database_cache_partial',
+                'winning_query': f"Cache + phone enrichment: {cached_company['name']}",
+                'organizations_found': [cached_company],
+                'firm_found': cached_company,
+                'contacts_found': cached_people,
+                'firm_phone': cached_company.get('phone'),
+                'attorney_contact': None,
+                'attorney_enrichment_status': result.get('attorney_enrichment_status', 'unknown')
+            })
+            
+            # TODO: Add phone enrichment logic here if needed
+            print(f"  [DB CACHE] Using {len(cached_people)} cached contacts - phone enrichment not yet implemented")
+            
+            # Save any new data to cache (though minimal in this case)
+            save_successful_result_to_cache(result, cursor, conn)
+            
+            return cleanup_and_return(result)
         
         # Search by exact domain
         print(f"  Attempt 1A: Domain search '{email_domain}'")
@@ -1054,7 +1642,11 @@ def search_firm_with_retry(lead_data, webhook_url=None):
                     })
                     attempt['success'] = True
                     result['attempts'].append(attempt)
-                    return result
+                    
+                    # Save successful result to cache
+                    save_successful_result_to_cache(result, cursor, conn)
+                    
+                    return cleanup_and_return(result)
         
         result['attempts'].append(attempt)
         
@@ -1091,7 +1683,7 @@ def search_firm_with_retry(lead_data, webhook_url=None):
                         safe_name = best.get('name', 'Unknown').encode('ascii', 'ignore').decode('ascii')
                         print(f"    SUCCESS! Selected: {safe_name} ({reason}) - DOMAIN ROOT MATCH")
                         
-                        org, contacts, selection_reason = search_people_with_fallback(ranked, firm_name, firm_domain)
+                        org, contacts, selection_reason = search_people_with_fallback(ranked, firm_name, firm_domain, attorney_email)
                         if org:
                             safe_name = org.get('name', 'Unknown').encode('ascii', 'ignore').decode('ascii')
                             print(f"    FINAL SELECTION: {safe_name} ({selection_reason})")
@@ -1108,7 +1700,11 @@ def search_firm_with_retry(lead_data, webhook_url=None):
                         })
                         attempt['success'] = True
                         result['attempts'].append(attempt)
-                        return result
+                        
+                        # Save successful result to cache
+                        save_successful_result_to_cache(result, cursor, conn)
+                        
+                        return cleanup_and_return(result)
             
             result['attempts'].append(attempt)
     
@@ -1179,7 +1775,11 @@ def search_firm_with_retry(lead_data, webhook_url=None):
                         })
                         attempt['success'] = True
                         result['attempts'].append(attempt)
-                        return result
+                        
+                        # Save successful result to cache
+                        save_successful_result_to_cache(result, cursor, conn)
+                        
+                        return cleanup_and_return(result)
                     else:
                         print(f"    No suitable law firms found with AI website: {reason}")
                 else:
@@ -1231,7 +1831,7 @@ def search_firm_with_retry(lead_data, webhook_url=None):
                         safe_name = best.get('name', 'Unknown').encode('ascii', 'ignore').decode('ascii')
                         print(f"    SUCCESS! Selected: {safe_name} ({reason})")
                         
-                        org, contacts, selection_reason = search_people_with_fallback(ranked, firm_name, firm_domain)
+                        org, contacts, selection_reason = search_people_with_fallback(ranked, firm_name, firm_domain, attorney_email)
                         if org:
                             safe_name = org.get('name', 'Unknown').encode('ascii', 'ignore').decode('ascii')
                             print(f"    FINAL SELECTION: {safe_name} ({selection_reason})")
@@ -1248,7 +1848,11 @@ def search_firm_with_retry(lead_data, webhook_url=None):
                     })
                     attempt['success'] = True
                     result['attempts'].append(attempt)
-                    return result
+                    
+                    # Save successful result to cache
+                    save_successful_result_to_cache(result, cursor, conn)
+                    
+                    return cleanup_and_return(result)
                 else:
                     print(f"    No clear winner ({reason}); trying next variation...")
             else:
@@ -1289,7 +1893,7 @@ def search_firm_with_retry(lead_data, webhook_url=None):
                         print(f"    SUCCESS! Selected: {safe_name} ({reason})")
                         
                         # Try multiple organizations until we find people
-                        org, contacts, selection_reason = search_people_with_fallback(ranked, firm_name, firm_domain)
+                        org, contacts, selection_reason = search_people_with_fallback(ranked, firm_name, firm_domain, attorney_email)
                         if org:
                             safe_name = org.get('name', 'Unknown').encode('ascii', 'ignore').decode('ascii')
                             print(f"    FINAL SELECTION: {safe_name} ({selection_reason})")
@@ -1306,7 +1910,11 @@ def search_firm_with_retry(lead_data, webhook_url=None):
                     })
                     attempt['success'] = True
                     result['attempts'].append(attempt)
-                    return result
+                    
+                    # Save successful result to cache
+                    save_successful_result_to_cache(result, cursor, conn)
+                    
+                    return cleanup_and_return(result)
                 else:
                     print(f"    No clear winner ({reason}); trying next fallback...")
             else:
@@ -1359,14 +1967,19 @@ def search_firm_with_retry(lead_data, webhook_url=None):
                 })
                 attempt['success'] = True
                 result['attempts'].append(attempt)
-                return result
+                
+                # Save successful result to cache
+                save_successful_result_to_cache(result, cursor, conn)
+                
+                return cleanup_and_return(result)
             else:
                 print(f"    No clear winner ({reason}); no further fallbacks.")
         else:
             print(f"    No law firms found via exact domain")
+        result['attempts'].append(attempt)
     else:
         print(f"    No results found via exact domain")
-    result['attempts'].append(attempt)
+        result['attempts'].append(attempt)
     
     # Handle public domain fallback
     if not firm_domain or is_public_domain(firm_domain):
@@ -1427,16 +2040,27 @@ def search_firm_with_retry(lead_data, webhook_url=None):
                     })
                     attempt['success'] = True
                     result['attempts'].append(attempt)
-                    return result
+                    
+                    # Save successful result to cache
+                    save_successful_result_to_cache(result, cursor, conn)
+                    
+                    return cleanup_and_return(result)
             
             result['attempts'].append(attempt)
 
     print(f"  FAILED: No organizations found for {firm_name}")
-    return result
+    return cleanup_and_return(result)
 
 # Removed dead function: enrich_people_at_organization (was unused)
 
 def main():
+    # Connect to cache database
+    conn, cursor = connect_to_db()
+    if conn:
+        print("[DB CACHE] Connected to Apollo cache database")
+    else:
+        print("[DB CACHE] Cache database not available - proceeding without cache")
+    
     try:
         with open('lawyers_of_lead_poor.json', 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -1461,7 +2085,7 @@ def main():
         processed_count += 1
         # Use -> instead of unicode arrow for Windows compatibility
         print(f"\nSearching firm for: {lead.get('client_name')} -> {lead.get('attorney_firm')}")
-        search_result = search_firm_with_retry(lead)
+        search_result = search_firm_with_retry(lead, cursor=cursor, conn=conn)
         results.append(search_result)
         if search_result['search_successful']:
             successful_searches += 1
@@ -1482,6 +2106,11 @@ def main():
     print(f"COMPANY SEARCH COMPLETE -> {out_file}")
     print(f"Processed: {processed_count} | Success: {successful_searches} | Rate: {output['success_rate']}")
     print("="*60)
+    
+    # Close database connection
+    if conn:
+        conn.close()
+        print("[DB CACHE] Database connection closed")
 
 if __name__ == "__main__":
     main()
