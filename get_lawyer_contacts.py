@@ -410,12 +410,23 @@ def process_leads_data(leads_data, limit=None):
         attorney_name_field = 'N/A'
         firm_name_source = None
         state_code = ''  # Two-letter state code like "TX", "CA"
+        lead_address = ''  # Full address string for AI context
         
-        # Extract state code from lead addresses (do this for all leads, even excluded ones)
+        # Extract state code and address from lead addresses (do this for all leads, even excluded ones)
         if lead.get('addresses') and len(lead['addresses']) > 0:
-            state_code = lead['addresses'][0].get('state', '')
+            address_obj = lead['addresses'][0]
+            state_code = address_obj.get('state', '')
             if state_code:
                 state_code = state_code.upper().strip()  # Ensure uppercase and clean
+            
+            # Build full address string for AI context
+            address_parts = []
+            for field in ['address_1', 'address_2', 'city', 'state', 'zipcode']:
+                value = address_obj.get(field, '')
+                if value and value.strip():
+                    address_parts.append(value.strip())
+            if address_parts:
+                lead_address = ', '.join(address_parts)
         
         # Fallback: If no state from addresses, try home address custom field
         if not state_code and lead.get('contacts') and len(lead['contacts']) > 0:
@@ -423,6 +434,9 @@ def process_leads_data(leads_data, limit=None):
             home_address = client_contact.get('custom.cf_9jn7jli1kHQD1ori1puDHIehKGtMz3SlA3gWK2NUz0N', '')
             if home_address:
                 state_code = extract_state_from_address_string(home_address)
+                # Use home address as lead_address if we don't have a formal address
+                if not lead_address:
+                    lead_address = home_address
         
         # Check if lead already has more than 2 contacts (completely exclude from processing)
         total_contacts = len(lead.get('contacts', []))
@@ -511,6 +525,7 @@ def process_leads_data(leads_data, limit=None):
             "attorney_email": attorney_email,
             "firm_domain": firm_domain,
             "state_code": state_code,
+            "lead_address": lead_address,
             "search_strategy": search_strategy,
             "needs_apollo_enrichment": needs_enrichment,
             "skip_reason": skip_reason,
@@ -527,13 +542,7 @@ def process_leads_data(leads_data, limit=None):
         print(f"  Attorney Email: {attorney_email}")
         print(f"  Firm Domain: {firm_domain}")
         print(f"  State: {state_code if state_code else 'N/A'}")
-        
-        # Show home address field for debugging
-        if lead.get('contacts') and len(lead['contacts']) > 0:
-            client_contact = lead['contacts'][0]
-            home_address = client_contact.get('custom.cf_9jn7jli1kHQD1ori1puDHIehKGtMz3SlA3gWK2NUz0N', '')
-            if home_address:
-                print(f"  Home Address: {home_address}")
+        print(f"  Lead Address: {lead_address if lead_address else 'N/A'}")
         
         print(f"  Search Strategy: {search_strategy}")
         print(f"  Needs Enrichment: {needs_enrichment}")
