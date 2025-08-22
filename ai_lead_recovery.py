@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-def classify_attorney_name(attorney_name: str, attorney_email: str, groq_api_key: str, retry_count: int = 3) -> Optional[Dict]:
+def classify_attorney_name(attorney_name: str, attorney_email: str, lead_state: str, lead_address: str, groq_api_key: str, retry_count: int = 3) -> Optional[Dict]:
     """
     Use Groq to classify if an attorney name is a person or firm
     Includes rate limiting and retries
@@ -23,17 +23,17 @@ def classify_attorney_name(attorney_name: str, attorney_email: str, groq_api_key
     prompt = f"""
     Analyze this attorney name field: "{attorney_name}"
     Attorney email: "{attorney_email}"
+    Attonrey state: "{lead_state}"
+    Lead address: "{lead_address}"
     
     Determine:
-    1. Is this a PERSON name, LAW FIRM name, or JUNK data?
-    2. Confidence level (1-10)
-    3. If it's a firm, suggest a likely website URL.
-    4. If it's a person, suggest what their firm might be called and what their url might be
-    5. If the attorney_email field is present, use it to find the firm's domain.
-    6. If we have the attorney email, use the root domain to suggest a url for the firm.
+    What personal injury law firm is this attorney associated with? provide a domain name for the firm.
+    nake note of the state for the attorney and the lead 
+    if the attonrey email is a peronal domain lke gmail yahho aol, than disregard it and only use the other info 
+
     
     Respond in this exact format:
-    TYPE: [PERSON/FIRM/JUNK]
+  
     CONFIDENCE: [1-10]
     WEBSITE: [suggested URL or "unknown"]
     """

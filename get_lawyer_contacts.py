@@ -182,7 +182,7 @@ def get_todays_leads():
             "saved_search_id": view_id
         },
         "_fields": {
-            "lead": ["id", "display_name", "status_id", "name", "contacts", "custom"]
+            "lead": ["id", "display_name", "status_id", "name", "contacts", "custom", "addresses"]
         },
         "_limit": 200
         # Note: _cursor will be added in the loop when available
@@ -297,6 +297,48 @@ def extract_domain_from_email(email):
         return email.split('@')[1]
     return None
 
+def extract_state_from_address_string(address_string):
+    """Extract state code from home address string like '110 west hartcort rd ingola IN 46703'"""
+    if not address_string or address_string == 'N/A':
+        return ''
+    
+    # Common state abbreviations and full names
+    states = {
+        'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+        'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+        'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+        'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+        'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC'
+    }
+    
+    # Handle common state name variations
+    state_mappings = {
+        'MASS': 'MA',
+        'MASSACHUSETTS': 'MA',
+        'FLORIDA': 'FL',
+        'CALIFORNIA': 'CA',
+        'TEXAS': 'TX',
+        'NEWYORK': 'NY',
+        'ILLINOIS': 'IL'
+    }
+    
+    # Split the address into words and look for state codes or names
+    words = address_string.upper().split()
+    
+    for word in words:
+        # Remove common punctuation
+        clean_word = word.strip('.,;:')
+        
+        # Check for standard 2-letter codes
+        if clean_word in states:
+            return clean_word
+        
+        # Check for state name variations
+        if clean_word in state_mappings:
+            return state_mappings[clean_word]
+    
+    return ''  # No state found
+
 def is_public_domain(domain):
     """Check if domain is a public email provider"""
     public_domains = {
@@ -355,12 +397,40 @@ def process_leads_data(leads_data, limit=None):
     print("LEAD INFORMATION:")
     print("="*80)
     
+    excluded_leads_count = 0
+    
     for i, lead in enumerate(leads, 1):
-        # Extract first name and personal email from the first contact (client)
+        # Initialize all variables at the start of each iteration
         first_name = 'N/A'
         personal_email = 'N/A'
         attorney_name = 'N/A'
         attorney_email = 'N/A'
+        firm_domain = None
+        law_office = 'N/A'
+        attorney_name_field = 'N/A'
+        firm_name_source = None
+        state_code = ''  # Two-letter state code like "TX", "CA"
+        
+        # Extract state code from lead addresses (do this for all leads, even excluded ones)
+        if lead.get('addresses') and len(lead['addresses']) > 0:
+            state_code = lead['addresses'][0].get('state', '')
+            if state_code:
+                state_code = state_code.upper().strip()  # Ensure uppercase and clean
+        
+        # Fallback: If no state from addresses, try home address custom field
+        if not state_code and lead.get('contacts') and len(lead['contacts']) > 0:
+            client_contact = lead['contacts'][0]
+            home_address = client_contact.get('custom.cf_9jn7jli1kHQD1ori1puDHIehKGtMz3SlA3gWK2NUz0N', '')
+            if home_address:
+                state_code = extract_state_from_address_string(home_address)
+        
+        # Check if lead already has more than 2 contacts (completely exclude from processing)
+        total_contacts = len(lead.get('contacts', []))
+        if total_contacts > 2:
+            excluded_leads_count += 1
+            print(f"\nLead #{i}: {lead.get('display_name', 'Unknown')} - EXCLUDED")
+            print(f"  Reason: Already has {total_contacts} contacts (>2) - skipping completely")
+            continue  # Skip this lead entirely, don't add to processed_leads
         
         if lead.get('contacts') and len(lead['contacts']) > 0:
             # Get the first contact (the client)
@@ -410,34 +480,27 @@ def process_leads_data(leads_data, limit=None):
             
 
         
-        # Check if lead already has more than 2 contacts (skip enrichment)
-        total_contacts = len(lead.get('contacts', []))
-        if total_contacts > 2:
+        # Determine enrichment needs and extract domain
+        firm_domain = extract_domain_from_email(attorney_email) if attorney_email != 'N/A' else None
+        needs_enrichment = True
+        skip_reason = None
+        search_strategy = None
+        
+        # Determine search strategy - prioritize firm name over domain
+        if attorney_name != 'N/A':
+            search_strategy = "firm_name"
+        elif firm_domain:
+            search_strategy = "domain"
+        
+        # Skip if no Law Office field AND personal email domain
+        if (law_office == 'N/A' or not law_office.strip()) and firm_domain and is_public_domain(firm_domain):
             needs_enrichment = False
-            skip_reason = f"Lead already has {total_contacts} contacts (>2) - skipping enrichment"
-            search_strategy = None
-        else:
-            # Determine enrichment needs and extract domain (existing logic)
-            firm_domain = extract_domain_from_email(attorney_email) if attorney_email != 'N/A' else None
-            needs_enrichment = True
-            skip_reason = None
-            search_strategy = None
-            
-            # Determine search strategy - prioritize firm name over domain
-            if attorney_name != 'N/A':
-                search_strategy = "firm_name"
-            elif firm_domain:
-                search_strategy = "domain"
-            
-            # Skip if no Law Office field AND personal email domain
-            if (law_office == 'N/A' or not law_office.strip()) and firm_domain and is_public_domain(firm_domain):
-                needs_enrichment = False
-                skip_reason = "No Law Office field and personal email domain - cannot validate results"
-            
-            # Also skip if we have absolutely no searchable information
-            elif attorney_name == 'N/A' and not firm_domain:
-                needs_enrichment = False
-                skip_reason = "No firm name or domain available for search"
+            skip_reason = "No Law Office field and personal email domain - cannot validate results"
+        
+        # Also skip if we have absolutely no searchable information
+        elif attorney_name == 'N/A' and not firm_domain:
+            needs_enrichment = False
+            skip_reason = "No firm name or domain available for search"
 
         # Create lead record
         lead_record = {
@@ -447,10 +510,11 @@ def process_leads_data(leads_data, limit=None):
             "attorney_firm": attorney_name,
             "attorney_email": attorney_email,
             "firm_domain": firm_domain,
+            "state_code": state_code,
             "search_strategy": search_strategy,
             "needs_apollo_enrichment": needs_enrichment,
             "skip_reason": skip_reason,
-            "total_contacts": len(lead.get('contacts', []))
+            "total_contacts": total_contacts
         }
         
         processed_leads.append(lead_record)
@@ -462,6 +526,15 @@ def process_leads_data(leads_data, limit=None):
         print(f"  Attorney/Firm: {attorney_name}")
         print(f"  Attorney Email: {attorney_email}")
         print(f"  Firm Domain: {firm_domain}")
+        print(f"  State: {state_code if state_code else 'N/A'}")
+        
+        # Show home address field for debugging
+        if lead.get('contacts') and len(lead['contacts']) > 0:
+            client_contact = lead['contacts'][0]
+            home_address = client_contact.get('custom.cf_9jn7jli1kHQD1ori1puDHIehKGtMz3SlA3gWK2NUz0N', '')
+            if home_address:
+                print(f"  Home Address: {home_address}")
+        
         print(f"  Search Strategy: {search_strategy}")
         print(f"  Needs Enrichment: {needs_enrichment}")
         if skip_reason:
@@ -471,6 +544,14 @@ def process_leads_data(leads_data, limit=None):
         # Print firm name source info AFTER the lead info
         if firm_name_source:
             print(f"    {firm_name_source}")
+    
+    # Print exclusion summary
+    if excluded_leads_count > 0:
+        print(f"\n{'='*80}")
+        print(f"EXCLUSION SUMMARY:")
+        print(f"  Leads excluded (>2 contacts): {excluded_leads_count}")
+        print(f"  Leads processed: {len(processed_leads)}")
+        print(f"  Total leads analyzed: {excluded_leads_count + len(processed_leads)}")
     
     return processed_leads
 

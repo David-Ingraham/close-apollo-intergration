@@ -577,33 +577,86 @@ def is_law_firm(name):
     return any(t in n for t in indicators)
 
 def _post(headers, payload):
-    """Make POST request with error handling and rate limiting"""
+    """Make POST request with error handling, retries, and rate limiting"""
     import time
-    try:
-        resp = requests.post(APOLLO_SEARCH_URL, headers=headers, json=payload)
-        
-        # Handle rate limiting
-        if resp.status_code == 429:
-            print(f"      WARN: Rate limit hit (429). Waiting 60 seconds...")
-            time.sleep(60)  # Wait 1 minute
-            # Retry once
-            resp = requests.post(APOLLO_SEARCH_URL, headers=headers, json=payload)
-        
-        resp.raise_for_status()
-        
-        # Add delay between all requests to prevent rate limiting
-        time.sleep(2)  # 2 second delay between requests
-        
-        return resp.json()
-    except requests.exceptions.HTTPError as e:
-        if e.response.status_code == 429:
-            print(f"      WARN: Rate limit exceeded. Try again in 60+ seconds")
-        else:
-            print(f"      WARN: search request error: {e}")
-        return None
-    except Exception as e:
-        print(f"      WARN: search request error: {e}")
-        return None
+    max_retries = 3
+    base_delay = 3  # Increased from 2 seconds
+    
+    for attempt in range(max_retries):
+        try:
+            # Add timeout to prevent hanging
+            resp = requests.post(APOLLO_SEARCH_URL, headers=headers, json=payload, timeout=30)
+            
+            # Handle rate limiting
+            if resp.status_code == 429:
+                wait_time = 60 + (attempt * 30)  # Exponential backoff: 60, 90, 120 seconds
+                print(f"      WARN: Rate limit hit (429). Waiting {wait_time} seconds... (attempt {attempt + 1}/{max_retries})")
+                time.sleep(wait_time)
+                continue  # Retry this attempt
+            
+            resp.raise_for_status()
+            
+            # Add delay between all successful requests to prevent rate limiting
+            time.sleep(base_delay)
+            
+            return resp.json()
+            
+        except requests.exceptions.SSLError as e:
+            wait_time = (attempt + 1) * 5  # 5, 10, 15 seconds for SSL issues
+            print(f"      WARN: SSL error (attempt {attempt + 1}/{max_retries}): {e}")
+            if attempt < max_retries - 1:
+                print(f"      Retrying in {wait_time} seconds...")
+                time.sleep(wait_time)
+                continue
+            else:
+                print(f"      Max SSL retries reached. Skipping request.")
+                return None
+                
+        except requests.exceptions.ConnectionError as e:
+            wait_time = (attempt + 1) * 5  # 5, 10, 15 seconds for connection issues
+            print(f"      WARN: Connection error (attempt {attempt + 1}/{max_retries}): {e}")
+            if attempt < max_retries - 1:
+                print(f"      Retrying in {wait_time} seconds...")
+                time.sleep(wait_time)
+                continue
+            else:
+                print(f"      Max connection retries reached. Skipping request.")
+                return None
+                
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 429:
+                wait_time = 60 + (attempt * 30)
+                print(f"      WARN: Rate limit exceeded (attempt {attempt + 1}/{max_retries}). Waiting {wait_time} seconds...")
+                if attempt < max_retries - 1:
+                    time.sleep(wait_time)
+                    continue
+            else:
+                print(f"      WARN: HTTP error: {e}")
+                return None
+                
+        except requests.exceptions.Timeout as e:
+            wait_time = (attempt + 1) * 10  # 10, 20, 30 seconds for timeouts
+            print(f"      WARN: Request timeout (attempt {attempt + 1}/{max_retries}): {e}")
+            if attempt < max_retries - 1:
+                print(f"      Retrying in {wait_time} seconds...")
+                time.sleep(wait_time)
+                continue
+            else:
+                print(f"      Max timeout retries reached. Skipping request.")
+                return None
+                
+        except Exception as e:
+            print(f"      WARN: Unexpected error (attempt {attempt + 1}/{max_retries}): {e}")
+            if attempt < max_retries - 1:
+                wait_time = (attempt + 1) * 5
+                print(f"      Retrying in {wait_time} seconds...")
+                time.sleep(wait_time)
+                continue
+            else:
+                print(f"      Max retries reached. Skipping request.")
+                return None
+    
+    return None
 
 def search_apollo_organization(query, page=1, per_page=100, domains=None):
     api_key = os.getenv('APOLLO_API_KEY')
@@ -1000,7 +1053,7 @@ def search_people_at_organization(org_id, org_name, attorney_firm_domain=None):
                     print(f"        [{i:2d}/{len(people)}] ✗ {person.get('first_name')} {person.get('last_name')} - Enrichment failed ({enrich_response.status_code})")
                 
                 # Rate limiting to avoid Apollo API limits
-                time.sleep(2)
+                time.sleep(3)
                 
             except Exception as e:
                 print(f"        [{i:2d}/{len(people)}] ERROR enriching {person.get('first_name')}: {e}")
@@ -1736,7 +1789,7 @@ def search_firm_with_retry(lead_data, webhook_url=None, cursor=None, conn=None):
         else:
             print(f"    Cleaned website: '{clean_website}'")
             print(f"  Attempt 1.5A: AI website search '{clean_website}'")
-            time.sleep(1)
+            time.sleep(3)
             api_response = search_apollo_organization(clean_website, page=1, per_page=100)
             attempt = {'strategy': 'ai_website', 'query': clean_website, 'success': False, 'organizations_count': 0}
             
@@ -1797,7 +1850,7 @@ def search_firm_with_retry(lead_data, webhook_url=None, cursor=None, conn=None):
         
         for i, variation in enumerate(variations, 1):
             print(f"  Attempt 2{chr(64+i)}: '{variation}'")
-            time.sleep(1)
+            time.sleep(3)
             api_response = search_apollo_organization(variation, page=1, per_page=100)
             attempt = {'strategy': 'name_variation', 'query': variation, 'success': False, 'organizations_count': 0}
             if api_response and api_response.get('organizations'):
