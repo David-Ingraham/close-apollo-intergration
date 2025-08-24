@@ -797,7 +797,7 @@ def is_law_firm_by_industry(org):
     
     return False
 
-def choose_best_org(lead_firm_name, firm_domain, candidates, attorney_email=None):
+def choose_best_org(lead_firm_name, firm_domain, candidates, attorney_email=None, ai_discovered_domain=False):
     if not candidates:
         return None, "no_candidates"
     
@@ -815,7 +815,31 @@ def choose_best_org(lead_firm_name, firm_domain, candidates, attorney_email=None
             domain_matches.sort(key=lambda c: calculate_firm_match_score(c, lead_firm_name, attorney_email), reverse=True)
             return domain_matches[0], "exact_domain_match"
 
-    # 3) Score all candidates with strict criteria
+    # 3) AI-discovered domain logic - trust the domain since it was already validated
+    if ai_discovered_domain:
+        # For AI-discovered domains, just pick the best law firm since domain was already validated
+        print(f"    Using AI-discovered domain logic - trusting domain validation")
+        if candidates:
+            # Sort by basic law firm indicators rather than name similarity
+            scored_candidates = []
+            for c in candidates:
+                # Basic scoring based on law firm indicators, not name matching
+                score = 0.5  # Base score for being at the validated domain
+                if is_law_firm_by_industry(c):
+                    score += 0.3
+                # Small bonus for having legal keywords in name
+                org_name = safe_lower(c.get("name", ""))
+                if any(keyword in org_name for keyword in ['law', 'attorney', 'legal', 'firm']):
+                    score += 0.2
+                scored_candidates.append((c, score))
+            
+            scored_candidates.sort(key=lambda x: x[1], reverse=True)
+            best_candidate, best_score = scored_candidates[0]
+            return best_candidate, f"ai_domain_validated:{best_score:.3f}"
+        else:
+            return None, "no_law_firms_at_ai_domain"
+
+    # 4) Score all candidates with strict criteria (original logic for given domains)
     scored_candidates = []
     for c in candidates:
         score = calculate_firm_match_score(c, lead_firm_name, attorney_email)
@@ -1356,7 +1380,7 @@ def try_redirect_recovery(attorney_email, firm_name, attorney_firm_domain):
     
     # Try the best redirect candidate
     ranked = rank_and_dedupe_organizations(law_firms, input_query=firm_name, input_domain=final_domain)
-    best, reason = choose_best_org(firm_name, final_domain, ranked, attorney_email)
+    best, reason = choose_best_org(firm_name, final_domain, ranked, attorney_email, ai_discovered_domain=False)
     
     if best:
         safe_name = best.get('name', 'Unknown').encode('ascii', 'ignore').decode('ascii')
@@ -1673,7 +1697,7 @@ def search_firm_with_retry(lead_data, webhook_url=None, cursor=None, conn=None):
             
             if law_firms:
                 ranked = rank_and_dedupe_organizations(law_firms, input_query=domain_root, input_domain=domain_root)
-                best, reason = choose_best_org(firm_name, email_domain, ranked, attorney_email)
+                best, reason = choose_best_org(firm_name, email_domain, ranked, attorney_email, ai_discovered_domain=False)
                 if best:
                     safe_name = best.get('name', 'Unknown').encode('ascii', 'ignore').decode('ascii')
                     print(f"    SUCCESS! Selected: {safe_name} ({reason}) - EXACT DOMAIN MATCH")
@@ -1731,7 +1755,7 @@ def search_firm_with_retry(lead_data, webhook_url=None, cursor=None, conn=None):
                 
                 if law_firms:
                     ranked = rank_and_dedupe_organizations(law_firms, input_query=domain_root, input_domain=domain_root)
-                    best, reason = choose_best_org(firm_name, email_domain, ranked, attorney_email)
+                    best, reason = choose_best_org(firm_name, email_domain, ranked, attorney_email, ai_discovered_domain=False)
                     if best:
                         safe_name = best.get('name', 'Unknown').encode('ascii', 'ignore').decode('ascii')
                         print(f"    SUCCESS! Selected: {safe_name} ({reason}) - DOMAIN ROOT MATCH")
@@ -1807,7 +1831,9 @@ def search_firm_with_retry(lead_data, webhook_url=None, cursor=None, conn=None):
                     # For AI suggestions, we're more trusting since AI analyzed the lead
                     firm_name = lead_data.get('attorney_firm')
                     attorney_email = lead_data.get('attorney_email')
-                    best, reason = choose_best_org(firm_name, clean_website, law_firms, attorney_email)
+                    # Check if this is an AI-discovered domain (from Tavily recovery)
+                    is_ai_discovered = ai_recovery and ai_recovery.get('apollo_validated', False)
+                    best, reason = choose_best_org(firm_name, clean_website, law_firms, attorney_email, ai_discovered_domain=is_ai_discovered)
                     
                     if best:
                         confidence = ai_recovery.get('ai_confidence', 'unknown') if ai_recovery else 'unknown'
@@ -1879,7 +1905,7 @@ def search_firm_with_retry(lead_data, webhook_url=None, cursor=None, conn=None):
                         input_query=variation,
                         input_domain=None if is_public_domain(firm_domain) else extract_domain_root(firm_domain)
                     )
-                    best, reason = choose_best_org(firm_name, firm_domain, ranked, attorney_email)
+                    best, reason = choose_best_org(firm_name, firm_domain, ranked, attorney_email, ai_discovered_domain=False)
                     if best:
                         safe_name = best.get('name', 'Unknown').encode('ascii', 'ignore').decode('ascii')
                         print(f"    SUCCESS! Selected: {safe_name} ({reason})")
@@ -1940,7 +1966,7 @@ def search_firm_with_retry(lead_data, webhook_url=None, cursor=None, conn=None):
                 
                 if law_firms:
                     ranked = rank_and_dedupe_organizations(law_firms, input_query=domain_root, input_domain=domain_root)
-                    best, reason = choose_best_org(firm_name, firm_domain, ranked, attorney_email)
+                    best, reason = choose_best_org(firm_name, firm_domain, ranked, attorney_email, ai_discovered_domain=False)
                     if best:
                         safe_name = best.get('name', 'Unknown').encode('ascii', 'ignore').decode('ascii')
                         print(f"    SUCCESS! Selected: {safe_name} ({reason})")
@@ -1997,7 +2023,7 @@ def search_firm_with_retry(lead_data, webhook_url=None, cursor=None, conn=None):
             
             if law_firms:
                 ranked = rank_and_dedupe_organizations(law_firms, input_query=firm_name or firm_domain, input_domain=domain_root)
-                best, reason = choose_best_org(firm_name, firm_domain, ranked, attorney_email)
+                best, reason = choose_best_org(firm_name, firm_domain, ranked, attorney_email, ai_discovered_domain=False)
                 if best:
                     safe_name = best.get('name', 'Unknown').encode('ascii', 'ignore').decode('ascii')
                     print(f"    SUCCESS! Selected: {safe_name} ({reason})")
@@ -2069,7 +2095,7 @@ def search_firm_with_retry(lead_data, webhook_url=None, cursor=None, conn=None):
             
             if law_firms:
                 ranked = rank_and_dedupe_organizations(law_firms, input_query=firm_name, input_domain=firm_domain)
-                best, reason = choose_best_org(firm_name, firm_domain, ranked, attorney_email)
+                best, reason = choose_best_org(firm_name, firm_domain, ranked, attorney_email, ai_discovered_domain=False)
                 
                 if best:
                     safe_name = best.get('name', 'Unknown').encode('ascii', 'ignore').decode('ascii')

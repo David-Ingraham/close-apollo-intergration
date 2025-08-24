@@ -53,7 +53,21 @@ def show_company_results_summary(data):
     
     for result in data['search_results']:
         if result.get('search_successful'):
-            contacts = result.get('contacts', [])
+            raw_contacts = result.get('contacts', [])
+            
+            # Flatten contacts - same logic as update_close_leads.py
+            contacts = []
+            for contact in raw_contacts:
+                if isinstance(contact, dict):
+                    # Individual contact dictionary
+                    contacts.append(contact)
+                elif isinstance(contact, list):
+                    # List of contacts - flatten it
+                    for sub_contact in contact:
+                        if isinstance(sub_contact, dict):
+                            contacts.append(sub_contact)
+                # Skip strings or other invalid types
+            
             total_contacts += len(contacts)
             successful_firms.append({
                 'client': result['client_name'],
@@ -72,10 +86,33 @@ def show_company_results_summary(data):
         else:
             print(f"\n[FAILED] {result['client_name']} -> {result['firm_name']} (search failed)")
     
+    # Count contacts with emails using proper flattening
+    def count_contacts_with_emails(data):
+        count = 0
+        for firm in data['search_results']:
+            if firm.get('search_successful'):
+                raw_contacts = firm.get('contacts', [])
+                
+                # Flatten contacts first
+                flattened_contacts = []
+                for contact in raw_contacts:
+                    if isinstance(contact, dict):
+                        flattened_contacts.append(contact)
+                    elif isinstance(contact, list):
+                        for sub_contact in contact:
+                            if isinstance(sub_contact, dict):
+                                flattened_contacts.append(sub_contact)
+                
+                # Count contacts with emails
+                count += sum(1 for contact in flattened_contacts if contact.get('email'))
+        return count
+    
+    contacts_with_emails = count_contacts_with_emails(data)
+    
     print(f"\nSUMMARY:")
     print(f"  Successful firms: {len(successful_firms)}")
     print(f"  Total contacts available: {total_contacts}")
-    print(f"  Contacts with emails: {sum(1 for firm in data['search_results'] if firm.get('search_successful') for contact in firm.get('contacts', []) if contact.get('email'))}")
+    print(f"  Contacts with emails: {contacts_with_emails}")
     print("=" * 60)
     
     return total_contacts
@@ -146,9 +183,23 @@ def extract_contacts_for_enrichment(data):
                     'request_id': f"{lead_id}_attorney"
                 })
         
-        # Process firm contacts
-        contacts = result.get('contacts', [])
-        for i, contact in enumerate(contacts):
+        # Process firm contacts - flatten nested structures first
+        raw_contacts = result.get('contacts', [])
+        
+        # Flatten contacts
+        flattened_contacts = []
+        for contact in raw_contacts:
+            if isinstance(contact, dict):
+                # Individual contact dictionary
+                flattened_contacts.append(contact)
+            elif isinstance(contact, list):
+                # List of contacts - flatten it
+                for sub_contact in contact:
+                    if isinstance(sub_contact, dict):
+                        flattened_contacts.append(sub_contact)
+            # Skip strings or other invalid types
+        
+        for i, contact in enumerate(flattened_contacts):
             # Only process contacts with email and person_id, and no existing phone
             if contact.get('email') and contact.get('person_id') and not contact.get('phone'):
                 enrichment_targets.append({

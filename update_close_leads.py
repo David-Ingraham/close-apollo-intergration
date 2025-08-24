@@ -263,8 +263,58 @@ def add_main_office_contact(lead_id, firm_name, firm_phone, existing_contacts=No
         print(f"    [ERROR] Failed to create Main Office contact: {e}")
         return None
 
+def is_valid_contact_name(name):
+    """Check if contact name is valid (not None, empty, or variations of None)"""
+    if not name or not isinstance(name, str):
+        return False
+    
+    # Clean the name
+    cleaned_name = name.strip().lower()
+    
+    # Check for invalid patterns
+    invalid_patterns = [
+        'none none',
+        'none',
+        'null null', 
+        'null',
+        '',
+        ' ',
+        'n/a',
+        'unknown unknown',
+        'unknown'
+    ]
+    
+    # Check exact matches
+    if cleaned_name in invalid_patterns:
+        return False
+    
+    # Check patterns with wildcards: "none *", "* none"
+    words = cleaned_name.split()
+    if len(words) == 2:
+        if words[0] == 'none' or words[1] == 'none':
+            return False
+        if words[0] == 'null' or words[1] == 'null':
+            return False
+    
+    return True
+
 def add_lawyer_to_lead(lead_id, client_name, firm_name, lawyer_data, phone_data=None, existing_contacts=None, attorney_firm_domain=None):
     """Add a lawyer as a contact or update existing contact with new info"""
+    
+    # Debug: Check if lawyer_data is a list instead of dict
+    if isinstance(lawyer_data, list):
+        print(f"    [ERROR] lawyer_data is a list instead of dict: {lawyer_data}")
+        return None
+    
+    if not isinstance(lawyer_data, dict):
+        print(f"    [ERROR] lawyer_data is not a dict: {type(lawyer_data)} - {lawyer_data}")
+        return None
+    
+    # Check for valid contact name
+    lawyer_name = lawyer_data.get('name', '')
+    if not is_valid_contact_name(lawyer_name):
+        print(f"    [SKIP] Invalid contact name: '{lawyer_name}' - not creating contact")
+        return None
     
     lawyer_email = lawyer_data.get('email')
     if not lawyer_email or lawyer_email == 'email_not_unlocked@domain.com':
@@ -464,11 +514,20 @@ def process_company_results():
         if attorney_contact:
             all_contacts.append(attorney_contact)
         
-        # Add firm contacts
-        all_contacts.extend(contacts)
+        # Add firm contacts - flatten any nested structures
+        for contact in contacts:
+            if isinstance(contact, dict):
+                # Individual contact dictionary
+                all_contacts.append(contact)
+            elif isinstance(contact, list):
+                # List of contacts - flatten it
+                for sub_contact in contact:
+                    if isinstance(sub_contact, dict):
+                        all_contacts.append(sub_contact)
+            # Skip strings or other invalid types
         
         attorney_count = 1 if attorney_contact else 0
-        firm_contact_count = len(contacts)
+        firm_contact_count = len(all_contacts) - attorney_count  # Count actual contacts after flattening
         total_contacts = len(all_contacts)
         
         print(f"\n{client_name} -> {firm_name}")
@@ -499,7 +558,15 @@ def process_company_results():
             continue
         
         # Process all contacts (attorney + firm contacts)
+        print(f"  DEBUG: all_contacts type: {type(all_contacts)}, length: {len(all_contacts) if hasattr(all_contacts, '__len__') else 'N/A'}")
         for i, lawyer in enumerate(all_contacts):
+            #print(f"  DEBUG: lawyer[{i}] type: {type(lawyer)}, content: {lawyer}")
+            
+            # Skip if lawyer is not a dict
+            if not isinstance(lawyer, dict):
+                print(f"    [ERROR] Skipping lawyer[{i}] - not a dictionary: {type(lawyer)}")
+                continue
+                
             # Identify if this is the original attorney
             is_original_attorney = (i == 0 and attorney_contact is not None)
             contact_type = "attorney" if is_original_attorney else "firm contact"
